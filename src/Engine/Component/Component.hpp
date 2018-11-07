@@ -64,6 +64,9 @@ class RA_ENGINE_API Component {
     /// Remove the render object from the component.
     void removeRenderObject(const Core::Index &roIdx);
 
+    /// Remove all render objects from the component.
+    virtual void clearRenderObjects() final;
+
     /// Perform a ray cast query.
     virtual void rayCastQuery( const Core::Ray& ray ) const;
 
