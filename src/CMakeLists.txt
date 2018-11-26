@@ -227,6 +227,13 @@ file(GLOB_RECURSE guibase_sources GuiBase/*.cpp)
 file(GLOB_RECURSE guibase_headers GuiBase/*.h GuiBase/*.hpp)
 file(GLOB_RECURSE guibase_inlines GuiBase/*.inl)
 
+file(GLOB_RECURSE guibase_uis  GuiBase/*.ui)
+qt5_wrap_ui(guibase_uis_moc ${guibase_uis})
+
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+
 set (guibase_libs
     radiumEngine
     radiumCore
@@ -241,7 +248,9 @@ add_library(
     ${guibase_target} SHARED
     ${guibase_sources}
     ${guibase_headers}
-    ${guibase_inlines})
+    ${guibase_inlines}
+    ${guibase_uis}
+    )
 
 target_include_directories(${guibase_target} PUBLIC ${RADIUM_SRC_DIR})
 
