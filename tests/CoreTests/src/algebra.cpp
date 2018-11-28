@@ -6,6 +6,22 @@ namespace Testing {
 
 void run() {
     // Test the custom vector functions.
+    Ra::Core::Vector3 a, b, c;
+    a = Ra::Core::Vector3::UnitX();
+    Ra::Core::Vector::getOrthogonalVectors( a, b, c );
+    RA_VERIFY( a.cross( b ) == c, "getOrthogonalVectors does not work" );
+    RA_VERIFY( b.cross( c ) == a, "getOrthogonalVectors does not work" );
+    RA_VERIFY( c.cross( a ) == b, "getOrthogonalVectors does not work" );
+    a = Ra::Core::Vector3::UnitY();
+    Ra::Core::Vector::getOrthogonalVectors( a, b, c );
+    RA_VERIFY( a.cross( b ) == c, "getOrthogonalVectors does not work" );
+    RA_VERIFY( b.cross( c ) == a, "getOrthogonalVectors does not work" );
+    RA_VERIFY( c.cross( a ) == b, "getOrthogonalVectors does not work" );
+    a = Ra::Core::Vector3::UnitZ();
+    Ra::Core::Vector::getOrthogonalVectors( a, b, c );
+    RA_VERIFY( a.cross( b ) == c, "getOrthogonalVectors does not work" );
+    RA_VERIFY( b.cross( c ) == a, "getOrthogonalVectors does not work" );
+    RA_VERIFY( c.cross( a ) == b, "getOrthogonalVectors does not work" );
 
     Ra::Core::Vector3 tests[] = {
         {1.34f, 10.34567f, 4.8e5f}, {0.f, -1.42f, -5.3e5f}, {0.9999f, 1.99999f, -1.000001f}};
