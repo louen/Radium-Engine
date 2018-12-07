@@ -51,6 +51,7 @@ include_directories(
     src/
     ${CMAKE_CURRENT_BINARY_DIR} # MOC
     ${RADIUM_INCLUDE_DIRS}
+    "${CMAKE_SOURCE_DIR}/Plugins/Animation/src"
     )
 
 add_library( Skinning SHARED ${sources} ${headers} ${inlines} )
@@ -60,10 +61,27 @@ add_dependencies( Skinning ${RADIUM_LIBRARIES} )
 target_compile_definitions( Skinning PRIVATE "-DSkinning_EXPORTS" )
 
 set(Qt5_LIBRARIES Qt5::Core Qt5::Widgets )
+
+if( APPLE )
+    set( USED_PLUGIN_LIBRARIES "${RADIUM_PLUGIN_OUTPUT_PATH}/libAnimation.dylib" )
+elseif ( UNIX )
+    set( USED_PLUGIN_LIBRARIES "${RADIUM_PLUGIN_OUTPUT_PATH}/libAnimation.so" )
+elseif (MINGW)
+    set( USED_PLUGIN_LIBRARIES "${RADIUM_PLUGIN_OUTPUT_PATH}/Animation.lib" )
+elseif( MSVC )
+    set( USED_PLUGIN_LIBRARIES "${RADIUM_PLUGIN_OUTPUT_PATH}/Animation.lib" )
+        add_custom_target( Implicit_copy_Animation
+                COMMAND ${CMAKE_COMMAND} -E copy "${RADIUM_PLUGIN_OUTPUT_PATH}/Animation.dll" "${RADIUM_BINARY_OUTPUT_PATH}/"
+                COMMENT "Copying Animation.lib into bin dir" VERBATIM
+        )
+        add_dependencies( Implicit Implicit_copy_Animation )
+endif()
+
 target_link_libraries( Skinning
                        ${Qt5_LIBRARIES}
                        ${RADIUM_LIBRARIES}
                        ${GLBINDING_LIBRARIES}           # Radium dep
+                       ${USED_PLUGIN_LIBRARIES}
                      )
 
 

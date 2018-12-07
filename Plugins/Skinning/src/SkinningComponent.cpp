@@ -1,13 +1,25 @@
 #include <SkinningComponent.hpp>
 
+#include <Core/Animation/Handle/HandleWeightOperation.hpp>
 #include <Core/Animation/Pose/PoseOperation.hpp>
 #include <Core/Geometry/Normal/Normal.hpp>
+#include <Core/Geometry/Distance/DistanceQueries.hpp>
+#include <Core/Math/ColorPresets.hpp>
 #include <Core/Mesh/MeshUtils.hpp>
 
 #include <Core/Animation/Skinning/DualQuaternionSkinning.hpp>
 #include <Core/Animation/Skinning/LinearBlendSkinning.hpp>
 #include <Core/Animation/Skinning/RotationCenterSkinning.hpp>
 #include <Core/Geometry/Triangle/TriangleOperation.hpp>
+
+#include <Engine/Renderer/Material/BlinnPhongMaterial.hpp>
+#include <Engine/Renderer/Mesh/Mesh.hpp>
+#include <Engine/Renderer/RenderObject/RenderObject.hpp>
+#include <Engine/Renderer/RenderObject/RenderObjectManager.hpp>
+#include <Engine/Renderer/RenderTechnique/RenderTechnique.hpp>
+#include <Engine/Renderer/RenderTechnique/ShaderConfigFactory.hpp>
+#include <Engine/Renderer/Texture/Texture.hpp>
+#include <Engine/Renderer/Texture/TextureManager.hpp>
 
 using Ra::Core::DualQuaternion;
 using Ra::Core::Quaternion;
@@ -24,6 +36,7 @@ using Ra::Core::Skinning::FrameData;
 using Ra::Core::Skinning::RefData;
 
 using Ra::Engine::ComponentMessenger;
+
 namespace SkinningPlugin {
 
 bool findDuplicates( const TriangleMesh& mesh, std::vector<Ra::Core::VertexIdx>& duplicatesMap ) {
@@ -83,6 +96,7 @@ void SkinningComponent::initialize() {
 
     if ( hasSkel && hasWeights && hasMesh && hasRefPose )
     {
+        m_renderObjectReader = compMsg->getterCallback<Ra::Core::Index>( getEntity(), m_contentsName );
         m_skeletonGetter = compMsg->getterCallback<Skeleton>( getEntity(), m_contentsName );
         m_verticesWriter =
             compMsg->rwCallback<Ra::Core::Vector3Array>( getEntity(), m_contentsName + "v" );
@@ -129,6 +143,26 @@ void SkinningComponent::initialize() {
 
         m_isReady = true;
         setupSkinningType( m_skinningType );
+
+        // prepare RO for skinning weights display
+        auto ro = getRoMgr()->getRenderObject( *m_renderObjectReader() );
+        m_baseTechnique = ro->getRenderTechnique();
+        m_baseUV = ro->getMesh()->getData( Ra::Engine::Mesh::VERTEX_TEXCOORD );
+        m_weightTechnique.reset( new Ra::Engine::RenderTechnique );
+        auto builder = Ra::Engine::EngineRenderTechniques::getDefaultTechnique( "BlinnPhong" );
+        builder.second( *m_weightTechnique.get(), true );
+        auto matT = std::static_pointer_cast<Ra::Engine::BlinnPhongMaterial>(
+            ro->getRenderTechnique()->getMaterial() );
+        std::shared_ptr<Ra::Engine::BlinnPhongMaterial> mat(
+            new Ra::Engine::BlinnPhongMaterial( "IS2016_Mat" ) );
+        mat->m_kd = Ra::Core::Colors::Skin();
+        mat->m_ks = Ra::Core::Vector4::Ones();
+        m_weightTechnique->setMaterial( mat );
+        // assign texture
+        auto tex = Ra::Engine::TextureManager::getInstance()->getOrLoadTexture( "../../../Assets/Textures/Influence0.png" );
+        mat->addTexture( Ra::Engine::BlinnPhongMaterial::TextureSemantic::TEX_DIFFUSE, tex );
+        // compute default weights uv
+        showWeightsType( 0 );
     }
 }
 
@@ -182,6 +216,23 @@ void SkinningComponent::skin() {
                     m_refData.m_weights, m_refData.m_CoR, m_frameData.m_currentPos );
                 break;
             }
+            case STBS_LBS:
+            {
+                Ra::Core::Animation::linearBlendSkinningSTBS(
+                    m_refData.m_referenceMesh.vertices(), m_frameData.m_refToCurrentRelPose,
+                    *skel, m_refData.m_skeleton, m_refData.m_weights, m_weightSTBS, m_frameData.m_currentPos );
+                break;
+            }
+            case STBS_DQS:
+            {
+                Ra::Core::AlignedStdVector<DualQuaternion> DQ;
+                Ra::Core::Animation::computeDQSTBS( m_frameData.m_refToCurrentRelPose,
+                                                    *skel, m_refData.m_skeleton,
+                                                    m_refData.m_weights, m_weightSTBS, DQ );
+                Ra::Core::Animation::dualQuaternionSkinning( m_refData.m_referenceMesh.vertices(),
+                                                             DQ, m_frameData.m_currentPos );
+                break;
+            } break;
             }
             Ra::Core::Animation::computeDQ( m_frameData.m_refToCurrentRelPose, m_refData.m_weights,
                                             m_DQ );
@@ -318,8 +369,89 @@ void SkinningComponent::setupSkinningType( SkinningType type ) {
         {
             Ra::Core::Animation::computeCoR( m_refData );
         }
+        break;
+    }
+    case STBS_DQS:
+    {
+        if ( m_DQ.empty() )
+        {
+            m_DQ.resize( m_refData.m_weights.rows(),
+                         DualQuaternion( Quaternion( 0.0, 0.0, 0.0, 0.0 ),
+                                         Quaternion( 0.0, 0.0, 0.0, 0.0 ) ) );
+        }
+    }
+    [[fallthrough]];
+    case STBS_LBS:
+    {
+        if ( m_weightSTBS.size() == 0 )
+        {
+            m_weightSTBS.resize( m_refData.m_weights.rows(), m_refData.m_weights.cols() );
+            std::vector<Eigen::Triplet<Scalar>> triplets;
+            const auto& V = m_refData.m_referenceMesh.vertices();
+            for (int i=0; i<m_weightSTBS.rows(); ++i)
+            {
+                const auto& pi = V[i];
+                for (int j=0; j<m_weightSTBS.cols(); ++j)
+                {
+                    Ra::Core::Vector3 a, b;
+                    m_refData.m_skeleton.getBonePoints( j, a, b );
+                    const Ra::Core::Vector3 ab = b-a;
+                    Scalar t = Ra::Core::DistanceQueries::projectOnSegment( pi, a, ab );
+                    if ( t > 0 )
+                    {
+                        triplets.push_back( Eigen::Triplet<Scalar>( i, j, t ) );
+                    }
+                }
+            }
+            m_weightSTBS.setFromTriplets( triplets.begin(), triplets.end() );
+        }
     }
     } // end of switch.
+}
+
+void SkinningComponent::showWeights( bool on ) {
+    m_showingWeights = on;
+    auto ro = getRoMgr()->getRenderObject( *m_renderObjectReader() );
+    if ( m_showingWeights )
+    {
+        ro->setRenderTechnique( m_weightTechnique );
+        ro->getMesh()->addData( Ra::Engine::Mesh::VERTEX_TEXCOORD, m_weightsUV );
+    } else
+    {
+        ro->setRenderTechnique( m_baseTechnique );
+        ro->getMesh()->addData( Ra::Engine::Mesh::VERTEX_TEXCOORD, m_baseUV );
+    }
+}
+
+void SkinningComponent::showWeightsType( int type ) {
+    if ( !m_showingWeights )
+        return;
+    const uint size = m_frameData.m_currentPos.size();
+    m_weightsUV.resize( size, Ra::Core::Vector3::Zero() );
+    m_weightType = type;
+    if ( type == 0 )
+    {
+#pragma omp parallel for
+        for ( int i = 0; i < int( size ); ++i )
+        {
+            m_weightsUV[i][0] = m_refData.m_weights.coeff( i, m_weightBone );
+        }
+    } else
+    {
+#pragma omp parallel for
+        for ( int i = 0; i < int( size ); ++i )
+        {
+            m_weightsUV[i][0] = m_weightSTBS.coeff( i, m_weightBone );
+        }
+    }
+    showWeights( true );
+}
+
+void SkinningComponent::setWeightBone( uint bone ) {
+    if ( m_weightBone == bone )
+        return;
+    m_weightBone = bone;
+    showWeightsType( m_weightType );
 }
 
 } // namespace SkinningPlugin

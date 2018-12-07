@@ -2,6 +2,7 @@
 #define RADIUMENGINE_DUAL_QUATERNION_SKINNING_HPP
 
 #include <Core/Animation/Handle/HandleWeight.hpp>
+#include <Core/Animation/Handle/Skeleton.hpp>
 #include <Core/Animation/Pose/Pose.hpp>
 #include <Core/Containers/AlignedStdVector.hpp>
 #include <Core/Containers/VectorArray.hpp>
@@ -34,6 +35,12 @@ void RA_CORE_API computeDQ_naive( const Pose& pose, const WeightMatrix& weight, 
  */
 void RA_CORE_API dualQuaternionSkinning( const Ra::Core::Vector3Array& input, const DQList& DQ,
                                          Ra::Core::Vector3Array& output );
+
+/// formula from Stretchable, Twistable Bones For Skeletal Shape Deformation, 2011 - Jacobson & Sorkine.
+void RA_CORE_API computeDQSTBS( const Pose& pose,
+                                const Skeleton &poseSkel, const Skeleton &restSkel,
+                                const WeightMatrix& weight, const WeightMatrix& weightSTBS,
+                                DQList& DQ );
 
 } // namespace Animation
 } // namespace Core

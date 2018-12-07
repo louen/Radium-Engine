@@ -13,6 +13,7 @@
 
 #include <Engine/Component/Component.hpp>
 #include <Engine/Managers/ComponentMessenger/ComponentMessenger.hpp>
+#include <Engine/Renderer/RenderTechnique/RenderTechnique.hpp>
 
 namespace SkinningPlugin {
 
@@ -22,15 +23,20 @@ class SKIN_PLUGIN_API SkinningComponent : public Ra::Engine::Component {
   public:
     /// The Geometric Skinning Method.
     enum SkinningType {
-        LBS = 0, ///< Linear Blend Skinning
-        DQS,     ///< Dual Quaternion Skinning
-        COR      ///< Center of Rotation skinning
+        LBS = 0,  ///< Linear Blend Skinning
+        DQS,      ///< Dual Quaternion Skinning
+        COR,       ///< Center of Rotation skinning
+        STBS_LBS, ///< Stretchable Twistable Bone Skinning with LBS
+        STBS_DQS  ///< Stretchable Twistable Bone Skinning with DQS
     };
 
     SkinningComponent( const std::string& name, SkinningType type, Ra::Engine::Entity* entity ) :
         Component( name, entity ),
         m_skinningType( type ),
-        m_isReady( false ) {}
+        m_isReady( false ),
+        m_weightBone( 0 ),
+        m_weightType( 0 ),
+        m_showingWeights( false ) {}
 
     virtual ~SkinningComponent() {}
 
@@ -71,6 +77,10 @@ class SKIN_PLUGIN_API SkinningComponent : public Ra::Engine::Component {
     /// Registers the Entity name for Component communication (in/out).
     void setContentsName( const std::string name );
 
+    void showWeights( bool on );
+    void showWeightsType( int type );
+    void setWeightBone( uint bone );
+
   private:
     /// The Entity name for Component communication.
     std::string m_contentsName;
@@ -93,6 +103,10 @@ class SKIN_PLUGIN_API SkinningComponent : public Ra::Engine::Component {
     Ra::Engine::ComponentMessenger::CallbackTypes<Ra::Core::Vector3Array>::ReadWrite
         m_normalsWriter;
 
+    // Read FMC's RO idx
+    Ra::Engine::ComponentMessenger::CallbackTypes<Ra::Core::Index>::Getter
+        m_renderObjectReader;
+
     /// The Skinning Method.
     SkinningType m_skinningType;
 
@@ -101,6 +115,17 @@ class SKIN_PLUGIN_API SkinningComponent : public Ra::Engine::Component {
 
     /// The list of DualQuaternions used for DQS.
     Ra::Core::AlignedStdVector<Ra::Core::DualQuaternion> m_DQ;
+
+    Ra::Core::Animation::WeightMatrix m_weightSTBS;
+
+    // Initial RO shader config when not painting
+    std::shared_ptr<Ra::Engine::RenderTechnique> m_baseTechnique;
+    std::shared_ptr<Ra::Engine::RenderTechnique> m_weightTechnique;
+    Ra::Core::Vector3Array m_baseUV;
+    Ra::Core::Vector3Array m_weightsUV;
+    uint m_weightBone;
+    uint m_weightType;
+    bool m_showingWeights;
 
     /// The duplicate vertices map, used to recompute smooth normals.
     std::vector<Ra::Core::Index> m_duplicatesMap;
