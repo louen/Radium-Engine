@@ -49,7 +49,7 @@ void MeshPaintComponent::initialize() {
     auto ro = getRoMgr()->getRenderObject( *m_renderObjectReader() );
     m_baseConfig = ro->getRenderTechnique()->getConfiguration();
     m_baseColors = ro->getMesh()->getData( Ra::Engine::Mesh::VERTEX_COLOR );
-    m_paintColors.resize( ro->getMesh()->getGeometry().vertices().size(),
+    m_paintColors.resize( ro->getMesh()->getTriangleMesh().vertices().size(),
                           Ra::Core::Utils::Color::Skin() );
     ro->getMesh()->addData( Ra::Engine::Mesh::VERTEX_COLOR, m_paintColors );
 }
@@ -96,7 +96,7 @@ void MeshPaintComponent::paintMesh( const Ra::Engine::Renderer::PickingResult& p
         return;
     }
 
-    const auto& T = ro->getMesh()->getGeometry().m_triangles;
+    const auto& T = ro->getMesh()->getTriangleMesh().m_triangles;
     auto colors = ro->getMesh()->getData( Ra::Engine::Mesh::VERTEX_COLOR );
 
     switch ( picking.m_mode )

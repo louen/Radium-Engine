@@ -103,9 +103,14 @@ class RA_ENGINE_API Mesh {
     inline void setRenderMode( MeshRenderMode mode );
     MeshRenderMode getRenderMode() const { return m_renderMode; }
 
-    /// Returns the underlying TriangleMesh.
-    inline const Core::Geometry::TriangleMesh& getGeometry() const;
-    inline Core::Geometry::TriangleMesh& getGeometry();
+    /// Returns the underlying AbstractGeometry, which is in fact a TriangleMesh
+    /// \see getTriangleMesh
+    inline const Core::Geometry::AbstractGeometry& getGeometry() const;
+    inline Core::Geometry::AbstractGeometry& getGeometry();
+
+    /// Returns the underlying TriangleMesh
+    inline const Core::Geometry::TriangleMesh& getTriangleMesh() const;
+    inline Core::Geometry::TriangleMesh& getTriangleMesh();
 
     /// Use the given geometry as base for a display mesh. Normals are optionnal.
     void loadGeometry( const Core::Geometry::TriangleMesh& mesh );

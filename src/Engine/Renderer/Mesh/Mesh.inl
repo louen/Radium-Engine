@@ -11,11 +11,19 @@ void Mesh::setRenderMode( MeshRenderMode mode ) {
     m_renderMode = mode;
 }
 
-const Core::Geometry::TriangleMesh& Mesh::getGeometry() const {
+const Core::Geometry::AbstractGeometry& Mesh::getGeometry() const {
     return m_mesh;
 }
 
-Core::Geometry::TriangleMesh& Mesh::getGeometry() {
+Core::Geometry::AbstractGeometry& Mesh::getGeometry() {
+    return m_mesh;
+}
+
+const Core::Geometry::TriangleMesh& Mesh::getTriangleMesh() const {
+    return m_mesh;
+}
+
+Core::Geometry::TriangleMesh& Mesh::getTriangleMesh() {
     return m_mesh;
 }
 

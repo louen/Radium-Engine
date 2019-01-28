@@ -112,7 +112,7 @@ size_t RenderObjectManager::getNumFaces() const {
         []( size_t a, const std::shared_ptr<RenderObject>& ro ) -> size_t {
             if ( ro->isVisible() && ro->getType() == Ra::Engine::RenderObjectType::Geometry )
             {
-                return a + ro->getMesh()->getGeometry().m_triangles.size();
+                return a + ro->getMesh()->getTriangleMesh().m_triangles.size();
             } else
             { return a; }
         } );
@@ -126,7 +126,7 @@ size_t RenderObjectManager::getNumVertices() const {
         []( size_t a, const std::shared_ptr<RenderObject>& ro ) -> size_t {
             if ( ro->isVisible() && ro->getType() == Ra::Engine::RenderObjectType::Geometry )
             {
-                return a + ro->getMesh()->getGeometry().vertices().size();
+                return a + ro->getMesh()->getTriangleMesh().vertices().size();
             } else
             { return a; }
         } );
@@ -151,7 +151,7 @@ Core::Aabb RenderObjectManager::getSceneAabb() const {
         if ( ro->isVisible() && ( entity != systemEntity ) )
         {
             Transform tr = entity->getTransform() * ro->getLocalTransform();
-            for ( const auto& p : ro->getMesh()->getGeometry().vertices() )
+            for ( const auto& p : ro->getMesh()->getTriangleMesh().vertices() )
             {
                 aabb.extend( tr * p );
             }

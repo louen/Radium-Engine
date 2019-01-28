@@ -169,7 +169,7 @@ Ra::Core::Utils::Index GeometryComponent::getRenderObjectIndex() const {
 }
 
 const Ra::Core::Geometry::TriangleMesh& GeometryComponent::getMesh() const {
-    return getDisplayMesh().getGeometry();
+    return getDisplayMesh().getTriangleMesh();
 }
 
 void GeometryComponent::setDeformable( bool b ) {
@@ -236,7 +236,7 @@ Ra::Core::Geometry::TriangleMesh* GeometryComponent::getMeshRw() {
     getDisplayMesh().setDirty( Mesh::VERTEX_POSITION );
     getDisplayMesh().setDirty( Mesh::VERTEX_NORMAL );
     getDisplayMesh().setDirty( Mesh::INDEX );
-    return &( getDisplayMesh().getGeometry() );
+    return &( getDisplayMesh().getTriangleMesh() );
 }
 
 void GeometryComponent::setMeshInput( const Core::Geometry::TriangleMesh* meshptr ) {
@@ -249,17 +249,17 @@ void GeometryComponent::setMeshInput( const Core::Geometry::TriangleMesh* meshpt
 
 Ra::Core::Geometry::TriangleMesh::PointAttribHandle::Container* GeometryComponent::getVerticesRw() {
     getDisplayMesh().setDirty( Mesh::VERTEX_POSITION );
-    return &( getDisplayMesh().getGeometry().vertices() );
+    return &( getDisplayMesh().getTriangleMesh().vertices() );
 }
 
 Ra::Core::Geometry::TriangleMesh::NormalAttribHandle::Container* GeometryComponent::getNormalsRw() {
     getDisplayMesh().setDirty( Mesh::VERTEX_NORMAL );
-    return &( getDisplayMesh().getGeometry().normals() );
+    return &( getDisplayMesh().getTriangleMesh().normals() );
 }
 
 Ra::Core::VectorArray<Ra::Core::Vector3ui>* GeometryComponent::getTrianglesRw() {
     getDisplayMesh().setDirty( Mesh::INDEX );
-    return &( getDisplayMesh().getGeometry().m_triangles );
+    return &( getDisplayMesh().getTriangleMesh().m_triangles );
 }
 
 const Ra::Core::Utils::Index* GeometryComponent::roIndexRead() const {
