@@ -18,7 +18,9 @@ namespace Geometry {
 /// Points and Normals, defining the mesh geometry, are always present.
 /// They can be accessed through vertices() and normals().
 /// Other attribs could be added with addAttrib() and accesssed with getAttrib().
-/// \note Attribute names "in_position" and "in_normal" are reserved.
+/// \note Attribute names "in_position" "in_normal" are reserved and pre-allocated.
+/// \note Attribute name "in_color" is not reserved, but automatically binded to
+/// colors by Ra::Engine::Mesh when it exists (type must be Vec4AttribHandle)
 class RA_CORE_API TriangleMesh : public AbstractGeometry {
   public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -159,17 +161,17 @@ class RA_CORE_API TriangleMesh : public AbstractGeometry {
     /// only compiles to something when in debug mode.
     void checkConsistency() const;
 
-    /// Results of a raycast vs a mesh
-    struct RayCastResult {
-        int m_hitTriangle = -1;
-        int m_nearestVertex = -1;
-        int m_edgeVertex0 = -1;
-        int m_edgeVertex1 = -1;
-        Scalar m_t = -1;
-    };
-    /// Return the index of the Triangle hit by the ray or -1 if there's no hit.
-    /// \FIXME
-    RayCastResult castRay( const Eigen::ParametrizedLine<Scalar, 3>& ray ) const;
+    //    /// Results of a raycast vs a mesh
+    //    struct RayCastResult {
+    //        int m_hitTriangle = -1;
+    //        int m_nearestVertex = -1;
+    //        int m_edgeVertex0 = -1;
+    //        int m_edgeVertex1 = -1;
+    //        Scalar m_t = -1;
+    //    };
+    //    /// Return the index of the Triangle hit by the ray or -1 if there's no hit.
+    //    /// \FIXME
+    //    RayCastResult castRay( const Eigen::ParametrizedLine<Scalar, 3>& ray ) const;
 
   public:
     /// The list of triangles.

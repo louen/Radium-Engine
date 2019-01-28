@@ -68,7 +68,7 @@ class RA_ENGINE_API Component {
     void removeRenderObject( const Core::Utils::Index& roIdx );
 
     /// Perform a ray cast query.
-    virtual void rayCastQuery( const Ra::Core::Ray& ray ) const;
+    //    virtual void rayCastQuery( const Ra::Core::Ray& ray ) const;
 
     // Editable transform interface.
     // This allow to edit the data in the component with a render object
