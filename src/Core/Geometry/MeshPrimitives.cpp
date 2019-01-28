@@ -3,35 +3,41 @@
 #include <Core/Types.hpp>
 
 #include <array>
+#include <string>
 
 namespace Ra {
 namespace Core {
 namespace Geometry {
 
-TriangleMesh makeXNormalQuad( const Vector2& halfExts ) {
+using namespace internal;
+
+TriangleMesh makeXNormalQuad( const Vector2& halfExts,
+                              const Utils::optional<Utils::Color>& color ) {
     Transform T = Transform::Identity();
     T.linear().col( 0 ).swap( T.linear().col( 1 ) );
     T.linear().col( 1 ).swap( T.linear().col( 2 ) );
-    return makePlaneGrid( 1, 1, halfExts, T );
+    return makePlaneGrid( 1, 1, halfExts, T, color );
 }
 
-TriangleMesh makeYNormalQuad( const Vector2& halfExts ) {
+TriangleMesh makeYNormalQuad( const Vector2& halfExts,
+                              const Utils::optional<Utils::Color>& color ) {
     Transform T = Transform::Identity();
     T.linear().col( 1 ).swap( T.linear().col( 2 ) );
     T.linear().col( 0 ).swap( T.linear().col( 1 ) );
-    return makePlaneGrid( 1, 1, halfExts, T );
+    return makePlaneGrid( 1, 1, halfExts, T, color );
 }
 
-TriangleMesh makeZNormalQuad( const Vector2& halfExts ) {
-    return makePlaneGrid( 1, 1, halfExts );
+TriangleMesh makeZNormalQuad( const Vector2& halfExts,
+                              const Utils::optional<Utils::Color>& color ) {
+    return makePlaneGrid( 1, 1, halfExts, Transform::Identity(), color );
 }
 
-TriangleMesh makeBox( const Vector3& halfExts ) {
+TriangleMesh makeBox( const Vector3& halfExts, const Utils::optional<Utils::Color>& color ) {
     Aabb aabb( -halfExts, halfExts );
-    return makeBox( aabb );
+    return makeBox( aabb, color );
 }
 
-TriangleMesh makeBox( const Aabb& aabb ) {
+TriangleMesh makeBox( const Aabb& aabb, const Utils::optional<Utils::Color>& color ) {
     TriangleMesh result;
     result.vertices() = {
         aabb.corner( Aabb::BottomLeftFloor ), aabb.corner( Aabb::BottomRightFloor ),
@@ -39,7 +45,7 @@ TriangleMesh makeBox( const Aabb& aabb ) {
         aabb.corner( Aabb::BottomLeftCeil ),  aabb.corner( Aabb::BottomRightCeil ),
         aabb.corner( Aabb::TopLeftCeil ),     aabb.corner( Aabb::TopRightCeil )};
 
-    Scalar a = 1. / std::sqrt( 3. );
+    static const Scalar a = Scalar( 1 ) / std::sqrt( Scalar( 3 ) );
     result.normals() = {Vector3( -a, -a, -a ), Vector3( +a, -a, -a ), Vector3( -a, +a, -a ),
                         Vector3( +a, +a, -a ), Vector3( -a, -a, +a ), Vector3( +a, -a, +a ),
                         Vector3( -a, +a, +a ), Vector3( +a, +a, +a )};
@@ -53,16 +59,18 @@ TriangleMesh makeBox( const Aabb& aabb ) {
         Vector3ui( 4, 5, 6 ), Vector3ui( 6, 5, 7 )  // Top
     };
 
+    configureColors( result, color );
     result.checkConsistency();
+
     return result;
 }
 
-TriangleMesh makeSharpBox( const Vector3& halfExts ) {
+TriangleMesh makeSharpBox( const Vector3& halfExts, const Utils::optional<Utils::Color>& color ) {
     Aabb aabb( -halfExts, halfExts );
-    return makeSharpBox( aabb );
+    return makeSharpBox( aabb, color );
 }
 
-TriangleMesh makeSharpBox( const Aabb& aabb ) {
+TriangleMesh makeSharpBox( const Aabb& aabb, const Utils::optional<Utils::Color>& color ) {
     TriangleMesh result;
     result.vertices() = {// Floor Face
                          aabb.corner( Aabb::BottomLeftFloor ), aabb.corner( Aabb::TopLeftFloor ),
@@ -113,13 +121,16 @@ TriangleMesh makeSharpBox( const Aabb& aabb ) {
         Vector3ui( 20, 21, 22 ), Vector3ui( 20, 22, 23 )  // Top
     };
 
+    configureColors( result, color );
     result.checkConsistency();
+
     return result;
 }
 
-TriangleMesh makeGeodesicSphere( Scalar radius, uint numSubdiv ) {
+TriangleMesh makeGeodesicSphere( Scalar radius, uint numSubdiv,
+                                 const Utils::optional<Utils::Color>& color ) {
     TriangleMesh result;
-    uint faceCount = std::pow( 4, numSubdiv ) * 20;
+    uint faceCount = uint( std::pow( 4, numSubdiv ) ) * 20;
     result.vertices().reserve( faceCount - 8 );
     result.normals().reserve( faceCount - 8 );
     result.m_triangles.reserve( faceCount );
@@ -179,11 +190,11 @@ TriangleMesh makeGeodesicSphere( Scalar radius, uint numSubdiv ) {
                 result.vertices()[tri[0]], result.vertices()[tri[1]], result.vertices()[tri[2]]};
             std::array<uint, 3> middles;
 
-            for ( int v = 0; v < 3; ++v )
+            for ( uint v = 0; v < 3; ++v )
             {
-                middles[v] = result.vertices().size();
+                middles[v] = uint( result.vertices().size() );
 
-                Vector3 vertex = 0.5f * ( triVertices[v] + triVertices[( v + 1 ) % 3] );
+                Vector3 vertex = Scalar( 0.5 ) * ( triVertices[v] + triVertices[( v + 1 ) % 3] );
                 vertex.normalize();
 
                 result.vertices().push_back( radius * vertex );
@@ -198,11 +209,14 @@ TriangleMesh makeGeodesicSphere( Scalar radius, uint numSubdiv ) {
         result.m_triangles = newTris;
     }
 
+    configureColors( result, color );
     result.checkConsistency();
+
     return result;
 }
 
-TriangleMesh makeCylinder( const Vector3& a, const Vector3& b, Scalar radius, uint nFaces ) {
+TriangleMesh makeCylinder( const Vector3& a, const Vector3& b, Scalar radius, uint nFaces,
+                           const Utils::optional<Utils::Color>& color ) {
     TriangleMesh result;
     result.vertices().reserve( 2 + 3 * nFaces );
     result.normals().reserve( 2 + 3 * nFaces );
@@ -258,17 +272,20 @@ TriangleMesh makeCylinder( const Vector3& a, const Vector3& b, Scalar radius, ui
         result.m_triangles.emplace_back( 0, br, bl );
         result.m_triangles.emplace_back( 1, tl, tr );
     }
+    configureColors( result, color );
     result.checkConsistency();
+
     return result;
 }
 
-TriangleMesh makeCapsule( Scalar length, Scalar radius, uint nFaces ) {
+TriangleMesh makeCapsule( Scalar length, Scalar radius, uint nFaces,
+                          const Utils::optional<Utils::Color>& color ) {
     TriangleMesh result;
     result.vertices().reserve( nFaces * nFaces + nFaces + 2 );
     result.normals().reserve( nFaces * nFaces + nFaces + 2 );
     result.m_triangles.reserve( 2 * ( nFaces * nFaces + nFaces ) );
 
-    const Scalar l = length / 2.0;
+    const Scalar l = length / Scalar( 2 );
 
     // We create a capsule by joining a cylinder with two half spheres.
 
@@ -310,7 +327,7 @@ TriangleMesh makeCapsule( Scalar length, Scalar radius, uint nFaces ) {
 
     // Part 2 : create the bottom hemisphere.
     const Scalar phiInc = Core::Math::Pi / Scalar( nFaces );
-    uint vert_count = result.vertices().size();
+    uint vert_count = uint( result.vertices().size() );
 
     // Bottom hemisphere vertices
     for ( uint j = 1; j <= nFaces / 2 - 1; ++j )
@@ -370,12 +387,12 @@ TriangleMesh makeCapsule( Scalar length, Scalar radius, uint nFaces ) {
         const uint j = nFaces / 2 - 2;
         uint bl = vert_count + j * nFaces + i;
         uint br = vert_count + j * nFaces + ( i + 1 ) % nFaces;
-        uint bot = result.vertices().size() - 1;
+        uint bot = uint( result.vertices().size() - 1 );
         result.m_triangles.emplace_back( br, bl, bot );
     }
 
     // Part 3 : create the top hemisphere
-    vert_count = result.vertices().size();
+    vert_count = uint( result.vertices().size() );
 
     // Top hemisphere vertices
     for ( uint j = 1; j <= nFaces / 2 - 1; ++j )
@@ -436,17 +453,18 @@ TriangleMesh makeCapsule( Scalar length, Scalar radius, uint nFaces ) {
         const uint j = nFaces / 2 - 2;
         uint bl = vert_count + j * nFaces + i;
         uint br = vert_count + j * nFaces + ( i + 1 ) % nFaces;
-        uint top = result.vertices().size() - 1;
+        uint top = uint( result.vertices().size() ) - 1;
         result.m_triangles.emplace_back( bl, br, top );
     }
 
-    // Compute normals and check results.
+    configureColors( result, color );
     result.checkConsistency();
+
     return result;
 }
 
 TriangleMesh makeTube( const Vector3& a, const Vector3& b, Scalar outerRadius, Scalar innerRadius,
-                       uint nFaces ) {
+                       uint nFaces, const Utils::optional<Utils::Color>& color ) {
 
     CORE_ASSERT( outerRadius > innerRadius, "Outer radius must be bigger than inner." );
 
@@ -532,11 +550,15 @@ TriangleMesh makeTube( const Vector3& a, const Vector3& b, Scalar outerRadius, S
         result.m_triangles.emplace_back( otr, itr, itl );
         result.m_triangles.emplace_back( itl, otl, otr );
     }
+
+    configureColors( result, color );
     result.checkConsistency();
+
     return result;
 }
 
-TriangleMesh makeCone( const Vector3& base, const Vector3& tip, Scalar radius, uint nFaces ) {
+TriangleMesh makeCone( const Vector3& base, const Vector3& tip, Scalar radius, uint nFaces,
+                       const Utils::optional<Utils::Color>& color ) {
     TriangleMesh result;
     result.vertices().reserve( 2 + nFaces );
     result.normals().reserve( 2 + nFaces );
@@ -574,12 +596,15 @@ TriangleMesh makeCone( const Vector3& base, const Vector3& tip, Scalar radius, u
         result.m_triangles.emplace_back( 0, br, bl );
         result.m_triangles.emplace_back( 1, bl, br );
     }
+
+    configureColors( result, color );
     result.checkConsistency();
+
     return result;
 }
 
 TriangleMesh makePlaneGrid( const uint rows, const uint cols, const Vector2& halfExts,
-                            const Transform& T ) {
+                            const Transform& T, const Utils::optional<Utils::Color>& color ) {
     TriangleMesh grid;
     const uint R = ( rows + 1 );
     const uint C = ( cols + 1 );
@@ -594,8 +619,8 @@ TriangleMesh makePlaneGrid( const uint rows, const uint cols, const Vector2& hal
     const Vector3 Y = T.linear().col( 1 ).normalized();
     const Vector3 Z = T.linear().col( 2 ).normalized();
 
-    const Vector3 x = ( 2.0 * halfExts[0] * X ) / ( Scalar )( cols );
-    const Vector3 y = ( 2.0 * halfExts[1] * Y ) / ( Scalar )( rows );
+    const Vector3 x = ( Scalar( 2 ) * halfExts[0] * X ) / Scalar( cols );
+    const Vector3 y = ( Scalar( 2 ) * halfExts[1] * Y ) / Scalar( rows );
     const Vector3 o = T.translation() - ( halfExts[0] * X ) - ( halfExts[1] * Y );
 
     Grid<uint, 2> v( {R, C} );
@@ -620,6 +645,9 @@ TriangleMesh makePlaneGrid( const uint rows, const uint cols, const Vector2& hal
                                            v.at( {i + 1, j} ) );
         }
     }
+
+    configureColors( grid, color );
+    grid.checkConsistency();
 
     return grid;
 }

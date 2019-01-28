@@ -113,7 +113,7 @@ class RA_ENGINE_API Mesh {
     inline Core::Geometry::TriangleMesh& getTriangleMesh();
 
     /// Use the given geometry as base for a display mesh. Normals are optionnal.
-    void loadGeometry( const Core::Geometry::TriangleMesh& mesh );
+    void loadGeometry( Core::Geometry::TriangleMesh&& mesh );
 
     /**
      * Use the given vertices and indices to build a display mesh according to
@@ -123,7 +123,8 @@ class RA_ENGINE_API Mesh {
      * \warning This might disappear when line meshes will be managed.
      */
     // Had to keep this for line meshes and Render Primitives.
-    void loadGeometry( const Core::Vector3Array& vertices, const std::vector<uint>& indices );
+    [[deprecated]] void loadGeometry( const Core::Vector3Array& vertices,
+                                      const std::vector<uint>& indices );
 
     /**
      * Set additionnal vertex data.
@@ -131,9 +132,11 @@ class RA_ENGINE_API Mesh {
      * data must have the appropriate size (i.e. num vertex) or empty (to
      * remove the data)
      * Theses functions might disapear to use directly Core::Geometry::TriangleMesh attribs.
+     *
+     * \note Attributes names are computed by #getAttribName
      */
-    void addData( const Vec3Data& type, const Core::Vector3Array& data );
-    void addData( const Vec4Data& type, const Core::Vector4Array& data );
+    [[deprecated]] void addData( const Vec3Data& type, const Core::Vector3Array& data );
+    [[deprecated]] void addData( const Vec4Data& type, const Core::Vector4Array& data );
 
     /// Access the additionnal data arrays by type.
     inline const Core::Vector3Array& getData( const Vec3Data& type ) const;
@@ -153,8 +156,9 @@ class RA_ENGINE_API Mesh {
     /// Draw the mesh.
     void render();
 
-    /// Colorize all mesh vertices with the given color.
-    inline void colorize( const Core::Utils::Color& color );
+    /// Get the name expected for a given attrib.
+    static inline std::string getAttribName( Vec3Data type );
+    static inline std::string getAttribName( Vec4Data type );
 
   private:
     /// Helper function to send buffer data to openGL.

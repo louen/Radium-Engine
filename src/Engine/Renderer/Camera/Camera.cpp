@@ -31,8 +31,8 @@ void Camera::initialize() {
     triMesh.vertices() = {{0, 0, 0},       {-0.5, -0.5, -1}, {-0.5, 0.5, -1}, {0.5, 0.5, -1},
                           {0.5, -0.5, -1}, {-0.3, 0.5, -1},  {0, 0.7, -1},    {0.3, 0.5, -1}};
     triMesh.m_triangles = {{0, 1, 2}, {0, 2, 3}, {0, 3, 4}, {0, 4, 1}, {5, 6, 7}};
-    m->loadGeometry( triMesh );
-    Core::Vector4Array c( triMesh.vertices().size(), {0.2, 0.2, 0.2, 1.0} );
+    m->loadGeometry( std::move( triMesh ) );
+    Core::Vector4Array c( 8, {Scalar( .2 ), Scalar( .2 ), Scalar( .2 ), Scalar( 1. )} );
     m->addData( Mesh::VERTEX_COLOR, c );
 
     // Create the RO

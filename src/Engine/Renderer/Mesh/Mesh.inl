@@ -58,10 +58,18 @@ void Mesh::setDirty( const Mesh::Vec4Data& type ) {
     m_isDirty = true;
 }
 
-void Mesh::colorize( const Core::Utils::Color& color ) {
-    Core::Vector4Array colors( getGeometry().vertices().size(), color );
-    addData( Engine::Mesh::VERTEX_COLOR, colors );
+std::string Mesh::getAttribName( Vec3Data type ) {
+    return std::string( "Vec3_attr_" ) + std::to_string( uint( type ) );
 }
+
+std::string Mesh::getAttribName( Vec4Data type ) {
+    return std::string( "Vec4_attr_" ) + std::to_string( uint( type ) );
+}
+
+// void Mesh::colorize( const Core::Utils::Color& color ) {
+//    Core::Vector4Array colors( getTriangleMesh().vertices().size(), color );
+//    addData( Engine::Mesh::VERTEX_COLOR, colors );
+//}
 
 } // namespace Engine
 } // namespace Ra

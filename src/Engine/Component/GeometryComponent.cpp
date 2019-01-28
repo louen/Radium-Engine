@@ -30,27 +30,17 @@ using TriangleArray = Ra::Core::VectorArray<Ra::Core::Vector3ui>;
 
 namespace Ra {
 namespace Engine {
-GeometryComponent::GeometryComponent( const std::string& name, bool deformable, Entity* entity ) :
-    Component( name, entity ),
-    m_deformable{deformable} {}
-
-GeometryComponent::~GeometryComponent() = default;
-
-void GeometryComponent::initialize() {}
-
-void GeometryComponent::addMeshRenderObject( const Ra::Core::Geometry::TriangleMesh& mesh,
-                                             const std::string& name ) {
-    setupIO( name );
-
-    std::shared_ptr<Mesh> displayMesh( new Mesh( name ) );
-    displayMesh->loadGeometry( mesh );
-
-    auto renderObject =
-        RenderObject::createRenderObject( name, this, RenderObjectType::Geometry, displayMesh );
-    m_meshIndex = addRenderObject( renderObject );
+TriangleMeshComponent::TriangleMeshComponent( const std::string& name, Entity* entity,
+                                              const Ra::Core::Asset::GeometryData* data ) :
+    Component( name, entity ) {
+    generateTriangleMesh( data );
 }
 
-void GeometryComponent::handleMeshLoading( const Ra::Core::Asset::GeometryData* data ) {
+TriangleMeshComponent::~TriangleMeshComponent() = default;
+
+void TriangleMeshComponent::initialize() {}
+
+void TriangleMeshComponent::generateTriangleMesh( const Ra::Core::Asset::GeometryData* data ) {
     std::string name( m_name );
     name.append( "_" + data->getName() );
 
@@ -97,7 +87,7 @@ void GeometryComponent::handleMeshLoading( const Ra::Core::Asset::GeometryData* 
         mesh.m_triangles[i] = faces[i].head<3>();
     }
 
-    displayMesh->loadGeometry( mesh );
+    displayMesh->loadGeometry( std::move( mesh ) );
 
     if ( data->hasTangents() )
     {
@@ -164,105 +154,87 @@ void GeometryComponent::handleMeshLoading( const Ra::Core::Asset::GeometryData* 
     m_meshIndex = addRenderObject( ro );
 }
 
-Ra::Core::Utils::Index GeometryComponent::getRenderObjectIndex() const {
+Ra::Core::Utils::Index TriangleMeshComponent::getRenderObjectIndex() const {
     return m_meshIndex;
 }
 
-const Ra::Core::Geometry::TriangleMesh& GeometryComponent::getMesh() const {
+const Ra::Core::Geometry::TriangleMesh& TriangleMeshComponent::getMesh() const {
     return getDisplayMesh().getTriangleMesh();
 }
 
-void GeometryComponent::setDeformable( bool b ) {
-    this->m_deformable = b;
-}
-
-void GeometryComponent::setContentName( const std::string& name ) {
+void TriangleMeshComponent::setContentName( const std::string& name ) {
     this->m_contentName = name;
 }
 
-void GeometryComponent::setupIO( const std::string& id ) {
+void TriangleMeshComponent::setupIO( const std::string& id ) {
     ComponentMessenger::CallbackTypes<Ra::Core::Geometry::TriangleMesh>::Getter cbOut =
-        std::bind( &GeometryComponent::getMeshOutput, this );
+        std::bind( &TriangleMeshComponent::getMeshOutput, this );
     ComponentMessenger::getInstance()->registerOutput<Ra::Core::Geometry::TriangleMesh>(
         getEntity(), this, id, cbOut );
 
     ComponentMessenger::CallbackTypes<Ra::Core::Geometry::TriangleMesh>::ReadWrite cbRw =
-        std::bind( &GeometryComponent::getMeshRw, this );
+        std::bind( &TriangleMeshComponent::getMeshRw, this );
     ComponentMessenger::getInstance()->registerReadWrite<Ra::Core::Geometry::TriangleMesh>(
         getEntity(), this, id, cbRw );
 
     ComponentMessenger::CallbackTypes<Ra::Core::Utils::Index>::Getter roOut =
-        std::bind( &GeometryComponent::roIndexRead, this );
+        std::bind( &TriangleMeshComponent::roIndexRead, this );
     ComponentMessenger::getInstance()->registerOutput<Ra::Core::Utils::Index>( getEntity(), this,
                                                                                id, roOut );
 
     ComponentMessenger::CallbackTypes<Ra::Core::Vector3Array>::ReadWrite vRW =
-        std::bind( &GeometryComponent::getVerticesRw, this );
+        std::bind( &TriangleMeshComponent::getVerticesRw, this );
     ComponentMessenger::getInstance()->registerReadWrite<Ra::Core::Vector3Array>( getEntity(), this,
                                                                                   id + "v", vRW );
 
     ComponentMessenger::CallbackTypes<Ra::Core::Vector3Array>::ReadWrite nRW =
-        std::bind( &GeometryComponent::getNormalsRw, this );
+        std::bind( &TriangleMeshComponent::getNormalsRw, this );
     ComponentMessenger::getInstance()->registerReadWrite<Ra::Core::Vector3Array>( getEntity(), this,
                                                                                   id + "n", nRW );
 
     ComponentMessenger::CallbackTypes<TriangleArray>::ReadWrite tRW =
-        std::bind( &GeometryComponent::getTrianglesRw, this );
+        std::bind( &TriangleMeshComponent::getTrianglesRw, this );
     ComponentMessenger::getInstance()->registerReadWrite<TriangleArray>( getEntity(), this,
                                                                          id + "t", tRW );
-
-    if ( m_deformable )
-    {
-        ComponentMessenger::CallbackTypes<Ra::Core::Geometry::TriangleMesh>::Setter cbIn =
-            std::bind( &GeometryComponent::setMeshInput, this, std::placeholders::_1 );
-        ComponentMessenger::getInstance()->registerInput<Ra::Core::Geometry::TriangleMesh>(
-            getEntity(), this, id, cbIn );
-    }
 }
 
-const Mesh& GeometryComponent::getDisplayMesh() const {
+const Mesh& TriangleMeshComponent::getDisplayMesh() const {
     return *( getRoMgr()->getRenderObject( getRenderObjectIndex() )->getMesh() );
 }
 
-Mesh& GeometryComponent::getDisplayMesh() {
+Mesh& TriangleMeshComponent::getDisplayMesh() {
     return *( getRoMgr()->getRenderObject( getRenderObjectIndex() )->getMesh() );
 }
 
-const Ra::Core::Geometry::TriangleMesh* GeometryComponent::getMeshOutput() const {
+const Ra::Core::Geometry::TriangleMesh* TriangleMeshComponent::getMeshOutput() const {
     return &( getMesh() );
 }
 
-Ra::Core::Geometry::TriangleMesh* GeometryComponent::getMeshRw() {
+Ra::Core::Geometry::TriangleMesh* TriangleMeshComponent::getMeshRw() {
     getDisplayMesh().setDirty( Mesh::VERTEX_POSITION );
     getDisplayMesh().setDirty( Mesh::VERTEX_NORMAL );
     getDisplayMesh().setDirty( Mesh::INDEX );
     return &( getDisplayMesh().getTriangleMesh() );
 }
 
-void GeometryComponent::setMeshInput( const Core::Geometry::TriangleMesh* meshptr ) {
-    CORE_ASSERT( meshptr, " Input is null" );
-    CORE_ASSERT( m_deformable, "Mesh is not deformable" );
-
-    Mesh& displayMesh = getDisplayMesh();
-    displayMesh.loadGeometry( *meshptr );
-}
-
-Ra::Core::Geometry::TriangleMesh::PointAttribHandle::Container* GeometryComponent::getVerticesRw() {
+Ra::Core::Geometry::TriangleMesh::PointAttribHandle::Container*
+TriangleMeshComponent::getVerticesRw() {
     getDisplayMesh().setDirty( Mesh::VERTEX_POSITION );
     return &( getDisplayMesh().getTriangleMesh().vertices() );
 }
 
-Ra::Core::Geometry::TriangleMesh::NormalAttribHandle::Container* GeometryComponent::getNormalsRw() {
+Ra::Core::Geometry::TriangleMesh::NormalAttribHandle::Container*
+TriangleMeshComponent::getNormalsRw() {
     getDisplayMesh().setDirty( Mesh::VERTEX_NORMAL );
     return &( getDisplayMesh().getTriangleMesh().normals() );
 }
 
-Ra::Core::VectorArray<Ra::Core::Vector3ui>* GeometryComponent::getTrianglesRw() {
+Ra::Core::VectorArray<Ra::Core::Vector3ui>* TriangleMeshComponent::getTrianglesRw() {
     getDisplayMesh().setDirty( Mesh::INDEX );
     return &( getDisplayMesh().getTriangleMesh().m_triangles );
 }
 
-const Ra::Core::Utils::Index* GeometryComponent::roIndexRead() const {
+const Ra::Core::Utils::Index* TriangleMeshComponent::roIndexRead() const {
     return &m_meshIndex;
 }
 

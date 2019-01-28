@@ -21,6 +21,8 @@
 namespace Ra {
 namespace Gui {
 
+const std::string colorAttribName = Engine::Mesh::getAttribName( Engine::Mesh::VERTEX_COLOR );
+
 ScaleGizmo::ScaleGizmo( Engine::Component* c, const Core::Transform& worldTo,
                         const Core::Transform& t, Mode mode ) :
     Gizmo( c, worldTo, t, mode ),
@@ -41,28 +43,28 @@ ScaleGizmo::ScaleGizmo( Engine::Component* c, const Core::Transform& worldTo,
     // For x,y,z
     for ( uint i = 0; i < 3; ++i )
     {
+        Core::Utils::Color arrowColor = Core::Utils::Color::Black();
+        arrowColor[i] = 1.f;
+
         Core::Vector3 cylinderEnd = Core::Vector3::Zero();
         Core::Vector3 arrowEnd = Core::Vector3::Zero();
         cylinderEnd[i] = ( 1.f - arrowFrac );
         arrowEnd[i] = 1.f;
 
-        Core::Geometry::TriangleMesh cylinder =
-            Core::Geometry::makeCylinder( Core::Vector3::Zero(), arrowScale * cylinderEnd, radius );
+        Core::Geometry::TriangleMesh cylinder = Core::Geometry::makeCylinder(
+            Core::Vector3::Zero(), arrowScale * cylinderEnd, radius, 32, arrowColor );
 
         Core::Aabb box;
         box.extend( Core::Vector3( -radius * 2, -radius * 2, -radius * 2 ) );
         box.extend( Core::Vector3( radius * 2, radius * 2, radius * 2 ) );
         box.translate( arrowScale * cylinderEnd );
-        Core::Geometry::TriangleMesh cone = Core::Geometry::makeSharpBox( box );
+        Core::Geometry::TriangleMesh cone = Core::Geometry::makeSharpBox( box, arrowColor );
 
         // Merge the cylinder and the cone to create the arrow shape.
         cylinder.append( cone );
 
         std::shared_ptr<Engine::Mesh> mesh( new Engine::Mesh( "Gizmo Arrow" ) );
-        mesh->loadGeometry( cylinder );
-        Core::Utils::Color arrowColor = Core::Utils::Color::Black();
-        arrowColor[i] = 1.f;
-        mesh->colorize( arrowColor );
+        mesh->loadGeometry( std::move( cylinder ) );
 
         Engine::RenderObject* arrowDrawable =
             new Engine::RenderObject( "Gizmo Arrow", m_comp, Engine::RenderObjectType::UI );
@@ -75,6 +77,9 @@ ScaleGizmo::ScaleGizmo( Engine::Component* c, const Core::Transform& worldTo,
     // For xy,yz,zx
     for ( uint i = 0; i < 3; ++i )
     {
+        Core::Utils::Color planeColor = Core::Utils::Color::Black();
+        planeColor[i] = 1.f;
+
         Core::Vector3 axis = Core::Vector3::Zero();
         axis[( i == 0 ? 1 : ( i == 1 ? 0 : 2 ) )] = 1;
         Core::Transform T = Core::Transform::Identity();
@@ -83,19 +88,13 @@ ScaleGizmo::ScaleGizmo( Engine::Component* c, const Core::Transform& worldTo,
         T.translation()[( i + 2 ) % 3] += arrowFrac * arrowScale * 3;
 
         Core::Geometry::TriangleMesh plane = Core::Geometry::makePlaneGrid(
-            1, 1, Core::Vector2( arrowFrac * arrowScale, arrowFrac * arrowScale ), T );
-        auto& n = plane.normals();
-#pragma omp parallel for
-        for ( int i = 0; i < n.size(); ++i )
-        {
-            n[i] = Core::Vector3::Zero();
-        }
+            1, 1, Core::Vector2( arrowFrac * arrowScale, arrowFrac * arrowScale ), T, planeColor );
+
+        // \FIXME this hack is here to be sure the plane will be selected (see shader)
+        plane.normals().getMap().fill( Scalar( 0 ) );
 
         std::shared_ptr<Engine::Mesh> mesh( new Engine::Mesh( "Gizmo Plane" ) );
-        mesh->loadGeometry( plane );
-        Core::Utils::Color planeColor = Core::Utils::Color::Black();
-        planeColor[i] = 1.f;
-        mesh->colorize( planeColor );
+        mesh->loadGeometry( std::move( plane ) );
 
         Engine::RenderObject* planeDrawable =
             new Engine::RenderObject( "Gizmo Plane", m_comp, Engine::RenderObjectType::UI );
@@ -133,21 +132,32 @@ void ScaleGizmo::updateTransform( Gizmo::Mode mode, const Core::Transform& world
     }
 }
 
+auto colorizeMesh = []( auto roMgr, int id, const Core::Utils::Color& color ) {
+    auto rendermesh = roMgr->getRenderObject( id )->getMesh();
+    CORE_ASSERT( rendermesh != nullptr, "Cannot access Gizmo render mesh" );
+
+    // \warning: this is ugly and might generate a std::bad cast.
+    // An alternative implementation would be to store references to the gizmo meshes and use
+    // them instead of using the roMgr.
+    Core::Geometry::TriangleMesh& mesh =
+        dynamic_cast<Core::Geometry::TriangleMesh&>( rendermesh->getGeometry() );
+    auto colorAttribHandle = mesh.getAttribHandle<Core::Vector4>( colorAttribName );
+    CORE_ASSERT( mesh.isValid( colorAttribHandle ), "Gizmo mesh should have colors" );
+    auto colorAttrib = mesh.getAttrib( colorAttribHandle ).data() =
+        Core::Vector4Array( mesh.vertices().size(), color );
+    rendermesh->setDirty( Engine::Mesh::VERTEX_COLOR );
+};
+
 void ScaleGizmo::selectConstraint( int drawableIdx ) {
     // reColor constraints
     auto roMgr = Engine::RadiumEngine::getInstance()->getRenderObjectManager();
-    auto RO = roMgr->getRenderObject( m_renderObjects[0] );
-    RO->getMesh()->colorize( Core::Utils::Color::Red() );
-    RO = roMgr->getRenderObject( m_renderObjects[1] );
-    RO->getMesh()->colorize( Core::Utils::Color::Green() );
-    RO = roMgr->getRenderObject( m_renderObjects[2] );
-    RO->getMesh()->colorize( Core::Utils::Color::Blue() );
-    RO = roMgr->getRenderObject( m_renderObjects[3] );
-    RO->getMesh()->colorize( Core::Utils::Color::Red() );
-    RO = roMgr->getRenderObject( m_renderObjects[4] );
-    RO->getMesh()->colorize( Core::Utils::Color::Green() );
-    RO = roMgr->getRenderObject( m_renderObjects[5] );
-    RO->getMesh()->colorize( Core::Utils::Color::Blue() );
+    colorizeMesh( roMgr, m_renderObjects[0], Core::Utils::Color::Red() );
+    colorizeMesh( roMgr, m_renderObjects[1], Core::Utils::Color::Green() );
+    colorizeMesh( roMgr, m_renderObjects[2], Core::Utils::Color::Blue() );
+    colorizeMesh( roMgr, m_renderObjects[3], Core::Utils::Color::Red() );
+    colorizeMesh( roMgr, m_renderObjects[4], Core::Utils::Color::Green() );
+    colorizeMesh( roMgr, m_renderObjects[5], Core::Utils::Color::Blue() );
+
     // prepare selection
     int oldAxis = m_selectedAxis;
     int oldPlane = m_selectedPlane;
@@ -159,21 +169,21 @@ void ScaleGizmo::selectConstraint( int drawableIdx ) {
                                 Core::Utils::Index( drawableIdx ) );
         if ( found != m_renderObjects.cend() )
         {
-            int i = found - m_renderObjects.begin();
+            auto i = std::distance( m_renderObjects.cbegin(), found );
             if ( i < 3 )
             {
-                m_selectedAxis = i;
-                RO = roMgr->getRenderObject( m_renderObjects[m_selectedAxis] );
-                RO->getMesh()->colorize( Core::Utils::Color::Yellow() );
+                m_selectedAxis = int( i );
+                colorizeMesh( roMgr, m_renderObjects[m_selectedAxis],
+                              Core::Utils::Color::Yellow() );
             } else if ( i < 6 )
             {
-                m_selectedPlane = i - 3;
-                RO = roMgr->getRenderObject( m_renderObjects[( m_selectedPlane + 1 ) % 3] );
-                RO->getMesh()->colorize( Core::Utils::Color::Yellow() );
-                RO = roMgr->getRenderObject( m_renderObjects[( m_selectedPlane + 2 ) % 3] );
-                RO->getMesh()->colorize( Core::Utils::Color::Yellow() );
-                RO = roMgr->getRenderObject( m_renderObjects[m_selectedPlane + 3] );
-                RO->getMesh()->colorize( Core::Utils::Color::Yellow() );
+                m_selectedPlane = int( i ) - 3;
+                colorizeMesh( roMgr, m_renderObjects[( m_selectedPlane + 1 ) % 3],
+                              Core::Utils::Color::Yellow() );
+                colorizeMesh( roMgr, m_renderObjects[( m_selectedPlane + 2 ) % 3],
+                              Core::Utils::Color::Yellow() );
+                colorizeMesh( roMgr, m_renderObjects[m_selectedPlane + 3],
+                              Core::Utils::Color::Yellow() );
             }
         }
     }
@@ -186,52 +196,40 @@ void ScaleGizmo::selectConstraint( int drawableIdx ) {
 
 Core::Transform ScaleGizmo::mouseMove( const Engine::Camera& cam, const Core::Vector2& nextXY,
                                        bool stepped ) {
-    static const Scalar step = 0.2;
+    static const Scalar step = Scalar( 0.2 );
 
     // Recolor gizmo
     bool whole = isKeyPressed( 0x01000020 ); // shift 16777248
     auto roMgr = Engine::RadiumEngine::getInstance()->getRenderObjectManager();
     if ( whole )
     {
-        auto RO = roMgr->getRenderObject( m_renderObjects[0] );
-        RO->getMesh()->colorize( Core::Utils::Color::Yellow() );
-        RO = roMgr->getRenderObject( m_renderObjects[1] );
-        RO->getMesh()->colorize( Core::Utils::Color::Yellow() );
-        RO = roMgr->getRenderObject( m_renderObjects[2] );
-        RO->getMesh()->colorize( Core::Utils::Color::Yellow() );
-        RO = roMgr->getRenderObject( m_renderObjects[3] );
-        RO->getMesh()->colorize( Core::Utils::Color::Yellow() );
-        RO = roMgr->getRenderObject( m_renderObjects[4] );
-        RO->getMesh()->colorize( Core::Utils::Color::Yellow() );
-        RO = roMgr->getRenderObject( m_renderObjects[5] );
-        RO->getMesh()->colorize( Core::Utils::Color::Yellow() );
+        colorizeMesh( roMgr, m_renderObjects[0], Core::Utils::Color::Yellow() );
+        colorizeMesh( roMgr, m_renderObjects[1], Core::Utils::Color::Yellow() );
+        colorizeMesh( roMgr, m_renderObjects[2], Core::Utils::Color::Yellow() );
+        colorizeMesh( roMgr, m_renderObjects[3], Core::Utils::Color::Yellow() );
+        colorizeMesh( roMgr, m_renderObjects[4], Core::Utils::Color::Yellow() );
+        colorizeMesh( roMgr, m_renderObjects[5], Core::Utils::Color::Yellow() );
     } else
     {
-        auto RO = roMgr->getRenderObject( m_renderObjects[0] );
-        RO->getMesh()->colorize( Core::Utils::Color::Red() );
-        RO = roMgr->getRenderObject( m_renderObjects[1] );
-        RO->getMesh()->colorize( Core::Utils::Color::Green() );
-        RO = roMgr->getRenderObject( m_renderObjects[2] );
-        RO->getMesh()->colorize( Core::Utils::Color::Blue() );
-        RO = roMgr->getRenderObject( m_renderObjects[3] );
-        RO->getMesh()->colorize( Core::Utils::Color::Red() );
-        RO = roMgr->getRenderObject( m_renderObjects[4] );
-        RO->getMesh()->colorize( Core::Utils::Color::Green() );
-        RO = roMgr->getRenderObject( m_renderObjects[5] );
-        RO->getMesh()->colorize( Core::Utils::Color::Blue() );
+        colorizeMesh( roMgr, m_renderObjects[0], Core::Utils::Color::Red() );
+        colorizeMesh( roMgr, m_renderObjects[1], Core::Utils::Color::Green() );
+        colorizeMesh( roMgr, m_renderObjects[2], Core::Utils::Color::Blue() );
+        colorizeMesh( roMgr, m_renderObjects[3], Core::Utils::Color::Red() );
+        colorizeMesh( roMgr, m_renderObjects[4], Core::Utils::Color::Green() );
+        colorizeMesh( roMgr, m_renderObjects[5], Core::Utils::Color::Blue() );
+
         if ( m_selectedAxis > -1 )
         {
-            RO = roMgr->getRenderObject( m_renderObjects[m_selectedAxis] );
-            RO->getMesh()->colorize( Core::Utils::Color::Yellow() );
+            colorizeMesh( roMgr, m_renderObjects[m_selectedAxis], Core::Utils::Color::Yellow() );
         }
         if ( m_selectedPlane > -1 )
         {
-            RO = roMgr->getRenderObject( m_renderObjects[( m_selectedPlane + 1 ) % 3] );
-            RO->getMesh()->colorize( Core::Utils::Color::Yellow() );
-            RO = roMgr->getRenderObject( m_renderObjects[( m_selectedPlane + 2 ) % 3] );
-            RO->getMesh()->colorize( Core::Utils::Color::Yellow() );
-            RO = roMgr->getRenderObject( m_renderObjects[m_selectedPlane + 3] );
-            RO->getMesh()->colorize( Core::Utils::Color::Yellow() );
+            colorizeMesh( roMgr, m_renderObjects[( m_selectedPlane + 1 ) % 3],
+                          Core::Utils::Color::Yellow() );
+            colorizeMesh( roMgr, m_renderObjects[( m_selectedPlane + 2 ) % 3],
+                          Core::Utils::Color::Yellow() );
+            colorizeMesh( roMgr, m_renderObjects[m_selectedPlane + 3],
+                          Core::Utils::Color::Yellow() );
         }
     }
 
@@ -273,15 +271,15 @@ Core::Transform ScaleGizmo::mouseMove( const Engine::Camera& cam, const Core::Ve
     }
 
     // Prevent scale == 0
-    const Core::Vector3 a = endPoint - m_startPos;
-    if ( a.squaredNorm() < 1e-3 )
+    const Scalar a = ( endPoint - m_startPos ).squaredNorm();
+    if ( a < Scalar( 1e-3 ) )
     {
         return m_transform;
     }
 
     // Get scale value
     const Core::Vector3 b = m_startPoint - m_startPos;
-    Scalar scale = a.norm() / b.norm();
+    Scalar scale = std::sqrt( a ) / b.norm();
     if ( stepped )
     {
         scale = int( scale / step + 1 ) * step;
