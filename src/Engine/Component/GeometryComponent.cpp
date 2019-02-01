@@ -32,9 +32,13 @@ namespace Ra {
 namespace Engine {
 TriangleMeshComponent::TriangleMeshComponent( const std::string& name, Entity* entity,
                                               const Ra::Core::Asset::GeometryData* data ) :
-    Component( name, entity ) {
+    Component( name, entity ),
+    _displayMesh( nullptr ) {
     generateTriangleMesh( data );
 }
+
+//////////// STORE Mesh/TriangleMesh here instead of an index, so don't need to request the ROMgr
+/// and no problem with the Displayable -> doesn't affect the API
 
 TriangleMeshComponent::~TriangleMeshComponent() = default;
 
@@ -55,7 +59,7 @@ void TriangleMeshComponent::generateTriangleMesh( const Ra::Core::Asset::Geometr
 
     m_contentName = data->getName();
 
-    auto displayMesh = Ra::Core::make_shared<Mesh>( meshName /*, Mesh::RM_POINTS*/ );
+    _displayMesh = Ra::Core::make_shared<Mesh>( meshName );
 
     Ra::Core::Geometry::TriangleMesh mesh;
     const auto T = data->getFrame();
@@ -87,26 +91,26 @@ void TriangleMeshComponent::generateTriangleMesh( const Ra::Core::Asset::Geometr
         mesh.m_triangles[i] = faces[i].head<3>();
     }
 
-    displayMesh->loadGeometry( std::move( mesh ) );
+    _displayMesh->loadGeometry( std::move( mesh ) );
 
     if ( data->hasTangents() )
     {
-        displayMesh->addData( Mesh::VERTEX_TANGENT, data->getTangents() );
+        _displayMesh->addData( Mesh::VERTEX_TANGENT, data->getTangents() );
     }
 
     if ( data->hasBiTangents() )
     {
-        displayMesh->addData( Mesh::VERTEX_BITANGENT, data->getBiTangents() );
+        _displayMesh->addData( Mesh::VERTEX_BITANGENT, data->getBiTangents() );
     }
 
     if ( data->hasTextureCoordinates() )
     {
-        displayMesh->addData( Mesh::VERTEX_TEXCOORD, data->getTexCoords() );
+        _displayMesh->addData( Mesh::VERTEX_TEXCOORD, data->getTexCoords() );
     }
 
     if ( data->hasColors() )
     {
-        displayMesh->addData( Mesh::VERTEX_COLOR, data->getColors() );
+        _displayMesh->addData( Mesh::VERTEX_COLOR, data->getColors() );
     }
 
     // To be discussed: Should not weights be part of the geometry ?
@@ -147,7 +151,7 @@ void TriangleMeshComponent::generateTriangleMesh( const Ra::Core::Asset::Geometr
     }
 
     auto ro = RenderObject::createRenderObject( roName, this, RenderObjectType::Geometry,
-                                                displayMesh, rt );
+                                                _displayMesh, rt );
     ro->setTransparent( isTransparent );
 
     setupIO( m_contentName );
@@ -155,11 +159,13 @@ void TriangleMeshComponent::generateTriangleMesh( const Ra::Core::Asset::Geometr
 }
 
 Ra::Core::Utils::Index TriangleMeshComponent::getRenderObjectIndex() const {
+    CORE_ASSERT( _displayMesh != nullptr, "DisplayMesh should exist while component is alive" );
     return m_meshIndex;
 }
 
 const Ra::Core::Geometry::TriangleMesh& TriangleMeshComponent::getMesh() const {
-    return getDisplayMesh().getTriangleMesh();
+    CORE_ASSERT( _displayMesh != nullptr, "DisplayMesh should exist while component is alive" );
+    return _displayMesh->getTriangleMesh();
 }
 
 void TriangleMeshComponent::setContentName( const std::string& name ) {
@@ -167,6 +173,7 @@ void TriangleMeshComponent::setContentName( const std::string& name ) {
 }
 
 void TriangleMeshComponent::setupIO( const std::string& id ) {
+    CORE_ASSERT( _displayMesh != nullptr, "DisplayMesh should exist while component is alive" );
     ComponentMessenger::CallbackTypes<Ra::Core::Geometry::TriangleMesh>::Getter cbOut =
         std::bind( &TriangleMeshComponent::getMeshOutput, this );
     ComponentMessenger::getInstance()->registerOutput<Ra::Core::Geometry::TriangleMesh>(
@@ -198,43 +205,40 @@ void TriangleMeshComponent::setupIO( const std::string& id ) {
                                                                          id + "t", tRW );
 }
 
-const Mesh& TriangleMeshComponent::getDisplayMesh() const {
-    return *( getRoMgr()->getRenderObject( getRenderObjectIndex() )->getMesh() );
-}
-
-Mesh& TriangleMeshComponent::getDisplayMesh() {
-    return *( getRoMgr()->getRenderObject( getRenderObjectIndex() )->getMesh() );
-}
-
 const Ra::Core::Geometry::TriangleMesh* TriangleMeshComponent::getMeshOutput() const {
-    return &( getMesh() );
+    return &_displayMesh->getTriangleMesh();
 }
 
 Ra::Core::Geometry::TriangleMesh* TriangleMeshComponent::getMeshRw() {
-    getDisplayMesh().setDirty( Mesh::VERTEX_POSITION );
-    getDisplayMesh().setDirty( Mesh::VERTEX_NORMAL );
-    getDisplayMesh().setDirty( Mesh::INDEX );
-    return &( getDisplayMesh().getTriangleMesh() );
+    CORE_ASSERT( _displayMesh != nullptr, "DisplayMesh should exist while component is alive" );
+    _displayMesh->setDirty( Mesh::VERTEX_POSITION );
+    _displayMesh->setDirty( Mesh::VERTEX_NORMAL );
+    _displayMesh->setDirty( Mesh::INDEX );
+    return &( _displayMesh->getTriangleMesh() );
 }
 
 Ra::Core::Geometry::TriangleMesh::PointAttribHandle::Container*
 TriangleMeshComponent::getVerticesRw() {
-    getDisplayMesh().setDirty( Mesh::VERTEX_POSITION );
-    return &( getDisplayMesh().getTriangleMesh().vertices() );
+    CORE_ASSERT( _displayMesh != nullptr, "DisplayMesh should exist while component is alive" );
+    _displayMesh->setDirty( Mesh::VERTEX_POSITION );
+    return &( _displayMesh->getTriangleMesh().vertices() );
 }
 
 Ra::Core::Geometry::TriangleMesh::NormalAttribHandle::Container*
 TriangleMeshComponent::getNormalsRw() {
-    getDisplayMesh().setDirty( Mesh::VERTEX_NORMAL );
-    return &( getDisplayMesh().getTriangleMesh().normals() );
+    CORE_ASSERT( _displayMesh != nullptr, "DisplayMesh should exist while component is alive" );
+    _displayMesh->setDirty( Mesh::VERTEX_NORMAL );
+    return &( _displayMesh->getTriangleMesh().normals() );
 }
 
 Ra::Core::VectorArray<Ra::Core::Vector3ui>* TriangleMeshComponent::getTrianglesRw() {
-    getDisplayMesh().setDirty( Mesh::INDEX );
-    return &( getDisplayMesh().getTriangleMesh().m_triangles );
+    CORE_ASSERT( _displayMesh != nullptr, "DisplayMesh should exist while component is alive" );
+    _displayMesh->setDirty( Mesh::INDEX );
+    return &( _displayMesh->getTriangleMesh().m_triangles );
 }
 
 const Ra::Core::Utils::Index* TriangleMeshComponent::roIndexRead() const {
+    CORE_ASSERT( _displayMesh != nullptr, "DisplayMesh should exist while component is alive" );
     return &m_meshIndex;
 }
 

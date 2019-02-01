@@ -55,12 +55,7 @@ void MeshFeatureTrackingComponent::setScale( Scalar scale ) {
 int MeshFeatureTrackingComponent::getMaxV() const {
     if ( m_data.m_mode != PickingMode::RO && getRoMgr()->exists( m_pickedRoIdx ) )
     {
-        return getRoMgr()
-            ->getRenderObject( m_pickedRoIdx )
-            ->getMesh()
-            ->getTriangleMesh()
-            .vertices()
-            .size();
+        return int( getRoMgr()->getRenderObject( m_pickedRoIdx )->getMesh()->getNumVertices() );
     }
     return 0;
 }
@@ -68,19 +63,7 @@ int MeshFeatureTrackingComponent::getMaxV() const {
 int MeshFeatureTrackingComponent::getMaxT() const {
     if ( m_data.m_mode != PickingMode::RO && getRoMgr()->exists( m_pickedRoIdx ) )
     {
-        auto ro = getRoMgr()->getRenderObject( m_pickedRoIdx );
-        if ( ro->getMesh()->getRenderMode() == MeshRenderMode::RM_TRIANGLES )
-        {
-            return ro->getMesh()->getTriangleMesh().m_triangles.size();
-        }
-        if ( ro->getMesh()->getRenderMode() == MeshRenderMode::RM_TRIANGLE_STRIP )
-        {
-            return int( ro->getMesh()->getTriangleMesh().m_triangles.size() - 1 ) * 3 + 1;
-        }
-        if ( ro->getMesh()->getRenderMode() == MeshRenderMode::RM_TRIANGLE_FAN )
-        {
-            return int( ro->getMesh()->getTriangleMesh().m_triangles.size() - 1 ) * 3 + 1;
-        }
+        return int( getRoMgr()->getRenderObject( m_pickedRoIdx )->getMesh()->getNumFaces() );
     }
     return 0;
 }
@@ -201,6 +184,7 @@ void getPos_TF2T( int tf, int& v1, int& v2, int& t1, int& t2 ) {
 } // namespace
 
 void MeshFeatureTrackingComponent::setData( const Ra::Engine::Renderer::PickingResult& data ) {
+    using Ra::Engine::Displayable;
     m_pickedRoIdx = data.m_roIdx;
     m_data.m_mode = data.m_mode;
     m_data.m_data = {-1, -1, -1, -1};
@@ -215,22 +199,19 @@ void MeshFeatureTrackingComponent::setData( const Ra::Engine::Renderer::PickingR
         return;
     }
     auto ro = getRoMgr()->getRenderObject( m_pickedRoIdx );
-    auto rm = ro->getMesh()->getRenderMode();
-    if ( rm == MeshRenderMode::RM_POINTS && m_data.m_mode != PickingMode::VERTEX )
+    auto rm = ro->getMesh()->pickingRenderMode();
+    if ( rm == Displayable::PKM_POINTS && m_data.m_mode != PickingMode::VERTEX )
     {
         m_data.m_mode = PickingMode::RO;
         return;
     }
-    if ( ( rm == MeshRenderMode::RM_LINES || rm == MeshRenderMode::RM_LINE_LOOP ||
-           rm == MeshRenderMode::RM_LINE_STRIP || rm == MeshRenderMode::RM_LINES_ADJACENCY ||
-           rm == MeshRenderMode::RM_LINE_STRIP_ADJACENCY ) &&
-         m_data.m_mode == PickingMode::TRIANGLE )
+    if ( rm == Displayable::PKM_TRI && m_data.m_mode == PickingMode::TRIANGLE )
     {
         m_data.m_mode = PickingMode::RO;
         return;
     }
     // fill data accordingly
-    if ( rm == MeshRenderMode::RM_POINTS )
+    if ( rm == Displayable::PKM_POINTS )
     {
         m_data.m_data[0] = data.m_elementIdx[0];
         return;

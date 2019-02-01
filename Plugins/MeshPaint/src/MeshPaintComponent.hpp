@@ -4,6 +4,7 @@
 #include <MeshPaintPluginMacros.hpp>
 
 #include <Core/Geometry/TriangleMesh.hpp>
+#include <Core/Utils/Attribs.hpp>
 #include <Core/Utils/Color.hpp>
 
 #include <Engine/Component/Component.hpp>
@@ -23,6 +24,9 @@ struct FrameInfo;
 
 namespace MeshPaintPlugin {
 
+/*!
+ * \brief The MeshPaintComponent class allows to paint over TriangleMeshes
+ */
 class MESH_PAINT_PLUGIN_API MeshPaintComponent : public Ra::Engine::Component {
   public:
     MeshPaintComponent( const std::string& name, Ra::Engine::Entity* entity );
@@ -33,6 +37,7 @@ class MESH_PAINT_PLUGIN_API MeshPaintComponent : public Ra::Engine::Component {
 
     void setDataId( const std::string& id );
 
+    /// Colors are reset to their original value when calling startPaint( false )
     void startPaint( bool on );
     void paintMesh( const Ra::Engine::Renderer::PickingResult& picking,
                     const Ra::Core::Utils::Color& color );
@@ -48,7 +53,7 @@ class MESH_PAINT_PLUGIN_API MeshPaintComponent : public Ra::Engine::Component {
     // Initial RO shader config when not painting
     Ra::Engine::ShaderConfiguration m_baseConfig;
     Ra::Core::Vector4Array m_baseColors;
-    Ra::Core::Vector4Array m_paintColors;
+    Ra::Core::Utils::AttribHandle<Ra::Core::Vector4> m_currentColorAttribHdl;
 };
 
 } // namespace MeshPaintPlugin

@@ -71,14 +71,14 @@ ScaleGizmo::ScaleGizmo( Engine::Component* c, const Core::Transform& worldTo,
         arrowDrawable->setRenderTechnique( rt );
         arrowDrawable->setMesh( mesh );
 
-        m_renderObjects.push_back( m_comp->addRenderObject( arrowDrawable ) );
+        addRenderObject( arrowDrawable, mesh );
     }
 
     // For xy,yz,zx
     for ( uint i = 0; i < 3; ++i )
     {
         Core::Utils::Color planeColor = Core::Utils::Color::Black();
-        planeColor[i] = 1.f;
+        planeColor[i] = Scalar( 1 );
 
         Core::Vector3 axis = Core::Vector3::Zero();
         axis[( i == 0 ? 1 : ( i == 1 ? 0 : 2 ) )] = 1;
@@ -100,7 +100,8 @@ ScaleGizmo::ScaleGizmo( Engine::Component* c, const Core::Transform& worldTo,
             new Engine::RenderObject( "Gizmo Plane", m_comp, Engine::RenderObjectType::UI );
         planeDrawable->setRenderTechnique( rt );
         planeDrawable->setMesh( mesh );
-        m_renderObjects.push_back( m_comp->addRenderObject( planeDrawable ) );
+
+        addRenderObject( planeDrawable, mesh );
     }
 
     // update all
@@ -123,7 +124,7 @@ void ScaleGizmo::updateTransform( Gizmo::Mode mode, const Core::Transform& world
         displayTransform.rotate( R );
     }
 
-    for ( auto roIdx : m_renderObjects )
+    for ( auto roIdx : roIds() )
     {
         Engine::RadiumEngine::getInstance()
             ->getRenderObjectManager()
@@ -132,31 +133,14 @@ void ScaleGizmo::updateTransform( Gizmo::Mode mode, const Core::Transform& world
     }
 }
 
-auto colorizeMesh = []( auto roMgr, int id, const Core::Utils::Color& color ) {
-    auto rendermesh = roMgr->getRenderObject( id )->getMesh();
-    CORE_ASSERT( rendermesh != nullptr, "Cannot access Gizmo render mesh" );
-
-    // \warning: this is ugly and might generate a std::bad cast.
-    // An alternative implementation would be to store references to the gizmo meshes and use
-    // them instead of using the roMgr.
-    Core::Geometry::TriangleMesh& mesh =
-        dynamic_cast<Core::Geometry::TriangleMesh&>( rendermesh->getGeometry() );
-    auto colorAttribHandle = mesh.getAttribHandle<Core::Vector4>( colorAttribName );
-    CORE_ASSERT( mesh.isValid( colorAttribHandle ), "Gizmo mesh should have colors" );
-    auto colorAttrib = mesh.getAttrib( colorAttribHandle ).data() =
-        Core::Vector4Array( mesh.vertices().size(), color );
-    rendermesh->setDirty( Engine::Mesh::VERTEX_COLOR );
-};
-
 void ScaleGizmo::selectConstraint( int drawableIdx ) {
     // reColor constraints
-    auto roMgr = Engine::RadiumEngine::getInstance()->getRenderObjectManager();
-    colorizeMesh( roMgr, m_renderObjects[0], Core::Utils::Color::Red() );
-    colorizeMesh( roMgr, m_renderObjects[1], Core::Utils::Color::Green() );
-    colorizeMesh( roMgr, m_renderObjects[2], Core::Utils::Color::Blue() );
-    colorizeMesh( roMgr, m_renderObjects[3], Core::Utils::Color::Red() );
-    colorizeMesh( roMgr, m_renderObjects[4], Core::Utils::Color::Green() );
-    colorizeMesh( roMgr, m_renderObjects[5], Core::Utils::Color::Blue() );
+    roMeshes()[0]->getTriangleMesh().colorize( Core::Utils::Color::Red() );
+    roMeshes()[1]->getTriangleMesh().colorize( Core::Utils::Color::Green() );
+    roMeshes()[2]->getTriangleMesh().colorize( Core::Utils::Color::Blue() );
+    roMeshes()[3]->getTriangleMesh().colorize( Core::Utils::Color::Red() );
+    roMeshes()[4]->getTriangleMesh().colorize( Core::Utils::Color::Green() );
+    roMeshes()[5]->getTriangleMesh().colorize( Core::Utils::Color::Blue() );
 
     // prepare selection
     int oldAxis = m_selectedAxis;
@@ -165,25 +149,25 @@ void ScaleGizmo::selectConstraint( int drawableIdx ) {
     m_selectedPlane = -1;
     if ( drawableIdx >= 0 )
     {
-        auto found = std::find( m_renderObjects.cbegin(), m_renderObjects.cend(),
-                                Core::Utils::Index( drawableIdx ) );
-        if ( found != m_renderObjects.cend() )
+        auto found =
+            std::find( roIds().cbegin(), roIds().cend(), Core::Utils::Index( drawableIdx ) );
+        if ( found != roIds().cend() )
         {
-            auto i = std::distance( m_renderObjects.cbegin(), found );
+            auto i = std::distance( roIds().cbegin(), found );
             if ( i < 3 )
             {
                 m_selectedAxis = int( i );
-                colorizeMesh( roMgr, m_renderObjects[m_selectedAxis],
-                              Core::Utils::Color::Yellow() );
+                roMeshes()[size_t( m_selectedAxis )]->getTriangleMesh().colorize(
+                    Core::Utils::Color::Yellow() );
             } else if ( i < 6 )
             {
                 m_selectedPlane = int( i ) - 3;
-                colorizeMesh( roMgr, m_renderObjects[( m_selectedPlane + 1 ) % 3],
-                              Core::Utils::Color::Yellow() );
-                colorizeMesh( roMgr, m_renderObjects[( m_selectedPlane + 2 ) % 3],
-                              Core::Utils::Color::Yellow() );
-                colorizeMesh( roMgr, m_renderObjects[m_selectedPlane + 3],
-                              Core::Utils::Color::Yellow() );
+                roMeshes()[size_t( ( m_selectedPlane + 1 ) % 3 )]->getTriangleMesh().colorize(
+                    Core::Utils::Color::Yellow() );
+                roMeshes()[size_t( ( m_selectedPlane + 2 ) % 3 )]->getTriangleMesh().colorize(
+                    Core::Utils::Color::Yellow() );
+                roMeshes()[size_t( m_selectedPlane + 3 )]->getTriangleMesh().colorize(
+                    Core::Utils::Color::Yellow() );
             }
         }
     }
@@ -192,6 +176,9 @@ void ScaleGizmo::selectConstraint( int drawableIdx ) {
         m_initialPix = Core::Vector2::Zero();
         m_start = false;
     }
+
+    for ( auto mesh : roMeshes() )
+        mesh->setDirty( Engine::Mesh::VERTEX_COLOR );
 }
 
 Core::Transform ScaleGizmo::mouseMove( const Engine::Camera& cam, const Core::Vector2& nextXY,
@@ -200,38 +187,38 @@ Core::Transform ScaleGizmo::mouseMove( const Engine::Camera& cam, const Core::Ve
 
     // Recolor gizmo
     bool whole = isKeyPressed( 0x01000020 ); // shift 16777248
-    auto roMgr = Engine::RadiumEngine::getInstance()->getRenderObjectManager();
     if ( whole )
     {
-        colorizeMesh( roMgr, m_renderObjects[0], Core::Utils::Color::Yellow() );
-        colorizeMesh( roMgr, m_renderObjects[1], Core::Utils::Color::Yellow() );
-        colorizeMesh( roMgr, m_renderObjects[2], Core::Utils::Color::Yellow() );
-        colorizeMesh( roMgr, m_renderObjects[3], Core::Utils::Color::Yellow() );
-        colorizeMesh( roMgr, m_renderObjects[4], Core::Utils::Color::Yellow() );
-        colorizeMesh( roMgr, m_renderObjects[5], Core::Utils::Color::Yellow() );
+        for ( auto mesh : roMeshes() )
+            mesh->getTriangleMesh().colorize( Core::Utils::Color::Yellow() );
+
     } else
     {
-        colorizeMesh( roMgr, m_renderObjects[0], Core::Utils::Color::Red() );
-        colorizeMesh( roMgr, m_renderObjects[1], Core::Utils::Color::Green() );
-        colorizeMesh( roMgr, m_renderObjects[2], Core::Utils::Color::Blue() );
-        colorizeMesh( roMgr, m_renderObjects[3], Core::Utils::Color::Red() );
-        colorizeMesh( roMgr, m_renderObjects[4], Core::Utils::Color::Green() );
-        colorizeMesh( roMgr, m_renderObjects[5], Core::Utils::Color::Blue() );
+        roMeshes()[0]->getTriangleMesh().colorize( Core::Utils::Color::Red() );
+        roMeshes()[1]->getTriangleMesh().colorize( Core::Utils::Color::Green() );
+        roMeshes()[2]->getTriangleMesh().colorize( Core::Utils::Color::Blue() );
+        roMeshes()[3]->getTriangleMesh().colorize( Core::Utils::Color::Red() );
+        roMeshes()[4]->getTriangleMesh().colorize( Core::Utils::Color::Green() );
+        roMeshes()[5]->getTriangleMesh().colorize( Core::Utils::Color::Blue() );
 
         if ( m_selectedAxis > -1 )
         {
-            colorizeMesh( roMgr, m_renderObjects[m_selectedAxis], Core::Utils::Color::Yellow() );
+            roMeshes()[size_t( m_selectedAxis )]->getTriangleMesh().colorize(
+                Core::Utils::Color::Yellow() );
         }
         if ( m_selectedPlane > -1 )
         {
-            colorizeMesh( roMgr, m_renderObjects[( m_selectedPlane + 1 ) % 3],
-                          Core::Utils::Color::Yellow() );
-            colorizeMesh( roMgr, m_renderObjects[( m_selectedPlane + 2 ) % 3],
-                          Core::Utils::Color::Yellow() );
-            colorizeMesh( roMgr, m_renderObjects[m_selectedPlane + 3],
-                          Core::Utils::Color::Yellow() );
+            roMeshes()[size_t( ( m_selectedPlane + 1 ) % 3 )]->getTriangleMesh().colorize(
+                Core::Utils::Color::Yellow() );
+            roMeshes()[size_t( ( m_selectedPlane + 2 ) % 3 )]->getTriangleMesh().colorize(
+                Core::Utils::Color::Yellow() );
+            roMeshes()[size_t( m_selectedPlane + 3 )]->getTriangleMesh().colorize(
+                Core::Utils::Color::Yellow() );
         }
     }
+
+    for ( auto mesh : roMeshes() )
+        mesh->setDirty( Engine::Mesh::VERTEX_COLOR );
 
     if ( m_selectedAxis == -1 && m_selectedPlane == -1 && !whole )
     {

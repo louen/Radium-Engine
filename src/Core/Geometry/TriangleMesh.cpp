@@ -1,4 +1,5 @@
 #include "TriangleMesh.hpp"
+#include <Core/Containers/VectorArray.hpp>
 #include <Core/Geometry/RayCast.hpp>
 #include <Core/Geometry/TriangleOperation.hpp> // triangleArea
 #include <Core/Types.hpp>
@@ -90,6 +91,12 @@ void TriangleMesh::checkConsistency() const {
     // Always have the same number of vertex data and vertices
     CORE_ASSERT( normals().size() == normals().size(), "Inconsistent number of normals" );
 #endif
+}
+
+void TriangleMesh::colorize( const Utils::Color& color ) {
+    static const std::string colorAttribName( "Vec4_attr_0" );
+    auto colorAttribHandle = addAttrib<Core::Vector4>( colorAttribName );
+    getAttrib( colorAttribHandle ).data() = Vector4Array( vertices().size(), color );
 }
 
 // TriangleMesh::RayCastResult TriangleMesh::castRay( const Core::Ray& ray ) const {

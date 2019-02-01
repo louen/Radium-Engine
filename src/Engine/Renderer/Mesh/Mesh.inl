@@ -3,12 +3,9 @@
 namespace Ra {
 namespace Engine {
 
-const std::string& Mesh::getName() const {
-    return m_name;
-}
-
 void Mesh::setRenderMode( MeshRenderMode mode ) {
     m_renderMode = mode;
+    updatePickingRenderMode();
 }
 
 const Core::Geometry::AbstractGeometry& Mesh::getGeometry() const {
@@ -48,12 +45,22 @@ void Mesh::setDirty( const Mesh::MeshData& type ) {
     m_isDirty = true;
 }
 
-void Mesh::setDirty( const Mesh::Vec3Data& type ) {
+void Mesh::setDirty( const Mesh::Vec3Data& type, bool handleAdded ) {
+    if ( handleAdded )
+    {
+        m_v3DataHandle[int( type )] =
+            m_mesh.getAttribHandle<Core::Vector3>( getAttribName( type ) );
+    }
     m_dataDirty[MAX_MESH + type] = true;
     m_isDirty = true;
 }
 
-void Mesh::setDirty( const Mesh::Vec4Data& type ) {
+void Mesh::setDirty( const Mesh::Vec4Data& type, bool handleAdded ) {
+    if ( handleAdded )
+    {
+        m_v4DataHandle[int( type )] =
+            m_mesh.getAttribHandle<Core::Vector4>( getAttribName( type ) );
+    }
     m_dataDirty[MAX_MESH + MAX_VEC3 + type] = true;
     m_isDirty = true;
 }

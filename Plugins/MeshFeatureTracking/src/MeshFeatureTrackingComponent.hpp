@@ -13,7 +13,7 @@ class MeshFeatureTrackingComponent : public Ra::Engine::Component {
   public:
     MeshFeatureTrackingComponent( const std::string& name );
 
-    virtual ~MeshFeatureTrackingComponent();
+    ~MeshFeatureTrackingComponent() override;
 
     virtual void initialize() override;
 
