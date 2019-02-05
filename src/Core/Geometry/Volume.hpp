@@ -70,7 +70,7 @@ class RA_CORE_API AbstractVolume : public AbstractGeometry {
     ///@{
     /// Return true if the volume is parametric
     inline bool isParametric() const;
-    /// Return true if the volume is discrete
+    /// Return true if the volume is discrete. Can be cast as AbstractDiscreteVolume
     inline bool isDiscrete() const;
     /// Return true if the volume is dense (implies #isDiscrete to be true)
     inline bool isDense() const;
