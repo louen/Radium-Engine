@@ -53,7 +53,7 @@ class RA_CORE_API GeometryData : public AssetData {
 
     GeometryData( const GeometryData& data ) = default;
 
-    ~GeometryData();
+    ~GeometryData() override;
 
     /// @name Data access
     ///@{

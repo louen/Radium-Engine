@@ -1,9 +1,11 @@
 
 #include <Core/Asset/AnimationData.hpp>
 #include <Core/Asset/CameraData.hpp>
+#include <Core/Asset/FileData.hpp>
 #include <Core/Asset/GeometryData.hpp>
 #include <Core/Asset/HandleData.hpp>
 #include <Core/Asset/LightData.hpp>
+#include <Core/Asset/VolumeData.hpp>
 #include <Core/Utils/Log.hpp>
 
 namespace Ra {
@@ -29,6 +31,16 @@ inline std::vector<GeometryData*> FileData::getGeometryData() const {
     std::vector<GeometryData*> list;
     list.reserve( m_geometryData.size() );
     for ( const auto& item : m_geometryData )
+    {
+        list.push_back( item.get() );
+    }
+    return list;
+}
+
+inline std::vector<VolumeData*> FileData::getVolumeData() const {
+    std::vector<VolumeData*> list;
+    list.reserve( m_volumeData.size() );
+    for ( const auto& item : m_volumeData )
     {
         list.push_back( item.get() );
     }

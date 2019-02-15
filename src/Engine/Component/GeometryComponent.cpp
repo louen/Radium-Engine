@@ -4,6 +4,7 @@
 
 #include <Core/Asset/FileData.hpp>
 #include <Core/Asset/GeometryData.hpp>
+#include <Core/Asset/VolumeData.hpp>
 #include <Core/Containers/MakeShared.hpp>
 #include <Core/Geometry/Normal.hpp>
 #include <Core/Utils/Color.hpp>
@@ -11,6 +12,7 @@
 #include <Engine/Managers/ComponentMessenger/ComponentMessenger.hpp>
 #include <Engine/Renderer/RenderObject/RenderObjectManager.hpp>
 
+#include <Engine/Renderer/Displayable/VolumeObject.hpp>
 #include <Engine/Renderer/Mesh/Mesh.hpp>
 
 #include <Engine/Renderer/Material/BlinnPhongMaterial.hpp>
@@ -240,6 +242,99 @@ Ra::Core::VectorArray<Ra::Core::Vector3ui>* TriangleMeshComponent::getTrianglesR
 const Ra::Core::Utils::Index* TriangleMeshComponent::roIndexRead() const {
     CORE_ASSERT( _displayMesh != nullptr, "DisplayMesh should exist while component is alive" );
     return &m_meshIndex;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////// Volume Component
+///////////////////////////////////
+
+VolumeComponent::VolumeComponent( const std::string& name, Entity* entity,
+                                  const Ra::Core::Asset::VolumeData* data ) :
+    Component( name, entity ),
+    _displayVolume( nullptr ) {
+    generateVolumeRender( data );
+}
+
+VolumeComponent::~VolumeComponent() = default;
+
+void VolumeComponent::initialize() {}
+
+void VolumeComponent::generateVolumeRender( const Ra::Core::Asset::VolumeData* data ) {
+    std::string name( m_name );
+    name.append( "_" + data->getName() );
+
+    std::string roName = name;
+
+    roName.append( "_RO" );
+    std::string meshName = name;
+    meshName.append( "_Mesh" );
+
+    std::string matName = name;
+    matName.append( "_Mat" );
+
+    m_contentName = name + "_DAT_" + data->getName();
+
+    _displayVolume = Ra::Core::make_shared<VolumeObject>( meshName );
+    _displayVolume->loadGeometry( data->volume );
+
+    // The technique for rendering this component
+    RenderTechnique rt;
+
+    bool isTransparent{true};
+    auto mat = Ra::Core::make_shared<BlinnPhongMaterial>( data->getName() + "_DefaultBPMaterial" );
+    mat->m_kd = Ra::Core::Utils::Color::Grey();
+    mat->m_ks = Ra::Core::Utils::Color::White();
+    rt.setMaterial( mat );
+    auto builder = EngineRenderTechniques::getDefaultTechnique( "BlinnPhong" );
+    builder.second( rt, isTransparent );
+
+    auto ro = RenderObject::createRenderObject( roName, this, RenderObjectType::Geometry,
+                                                _displayVolume, rt );
+    ro->setTransparent( isTransparent );
+
+    setupIO( m_contentName );
+    m_volumeIndex = addRenderObject( ro );
+}
+
+Ra::Core::Utils::Index VolumeComponent::getRenderObjectIndex() const {
+    CORE_ASSERT( _displayVolume != nullptr, "DisplayMesh should exist while component is alive" );
+    return m_volumeIndex;
+}
+
+void VolumeComponent::setContentName( const std::string& name ) {
+    this->m_contentName = name;
+}
+
+void VolumeComponent::setupIO( const std::string& id ) {
+    CORE_ASSERT( _displayVolume != nullptr, "DisplayMesh should exist while component is alive" );
+    ComponentMessenger::CallbackTypes<Ra::Core::Geometry::AbstractVolume>::Getter cbOut =
+        std::bind( &VolumeComponent::getVolumeOutput, this );
+    ComponentMessenger::getInstance()->registerOutput<Ra::Core::Geometry::AbstractVolume>(
+        getEntity(), this, id, cbOut );
+
+    ComponentMessenger::CallbackTypes<Ra::Core::Geometry::AbstractVolume>::ReadWrite cbRw =
+        std::bind( &VolumeComponent::getVolumeRw, this );
+    ComponentMessenger::getInstance()->registerReadWrite<Ra::Core::Geometry::AbstractVolume>(
+        getEntity(), this, id, cbRw );
+
+    ComponentMessenger::CallbackTypes<Ra::Core::Utils::Index>::Getter roOut =
+        std::bind( &VolumeComponent::roIndexRead, this );
+    ComponentMessenger::getInstance()->registerOutput<Ra::Core::Utils::Index>( getEntity(), this,
+                                                                               id, roOut );
+}
+
+const Ra::Core::Utils::Index* VolumeComponent::roIndexRead() const {
+    CORE_ASSERT( _displayVolume != nullptr, "DisplayMesh should exist while component is alive" );
+    return &m_volumeIndex;
+}
+
+const Ra::Core::Geometry::AbstractVolume* VolumeComponent::getVolumeOutput() const {
+    return &_displayVolume->getVolume();
+}
+
+Ra::Core::Geometry::AbstractVolume* VolumeComponent::getVolumeRw() {
+    return &_displayVolume->getVolume();
 }
 
 } // namespace Engine

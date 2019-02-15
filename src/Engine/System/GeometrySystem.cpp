@@ -27,10 +27,21 @@ void GeometrySystem::handleAssetLoading( Ra::Engine::Entity* entity,
         auto comp = new TriangleMeshComponent( componentName, entity, data );
         registerComponent( entity, comp );
     }
+
+    auto volumeData = fileData->getVolumeData();
+
+    id = 0;
+
+    for ( const auto& data : volumeData )
+    {
+        std::string componentName = "VOL_" + entity->getName() + std::to_string( id++ );
+        auto comp = new VolumeComponent( componentName, entity, data );
+        registerComponent( entity, comp );
+    }
 }
 
 void GeometrySystem::generateTasks( Ra::Core::TaskQueue* /*taskQueue*/,
-                                    const Ra::Engine::FrameInfo& frameInfo ) {
+                                    const Ra::Engine::FrameInfo& /*frameInfo*/ ) {
     // Do nothing, as this system only displays meshes.
 }
 
