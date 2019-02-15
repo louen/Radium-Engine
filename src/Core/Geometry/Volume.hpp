@@ -69,17 +69,17 @@ class RA_CORE_API AbstractVolume : public AbstractGeometry {
     /// \name Status queries
     ///@{
     /// Return true if the volume is parametric
-    inline bool isParametric() const;
+    bool isParametric() const;
     /// Return true if the volume is discrete. Can be cast as AbstractDiscreteVolume
-    inline bool isDiscrete() const;
+    bool isDiscrete() const;
     /// Return true if the volume is dense (implies #isDiscrete to be true)
-    inline bool isDense() const;
+    bool isDense() const;
     /// Return true if the volume is sparse (implies #isDiscrete to be true)
-    inline bool isSparse() const;
+    bool isSparse() const;
     ///@}
 
     /// Print info to the Debug output. Need to be extended by child classes
-    inline void displayInfo() const;
+    void displayInfo() const;
 
   protected:
     /// The type of geometry for the object.
@@ -177,6 +177,8 @@ class RA_CORE_API VolumeGrid : public AbstractDiscreteVolume {
 
     using AbstractDiscreteVolume::addToBin;
     using AbstractDiscreteVolume::getBinValue;
+
+    inline const Container& data() const { return _data; }
 
   protected:
     /// Get the function value a given position p
