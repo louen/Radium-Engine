@@ -89,6 +89,7 @@ void Engine::Texture::updateData( void* data ) {
         m_texture->image1D( 0, m_textureParameters.internalFormat,
                             GLsizei( m_textureParameters.width ), 0, m_textureParameters.format,
                             m_textureParameters.type, data );
+        GL_CHECK_ERROR
     }
     break;
     case GL_TEXTURE_2D:
@@ -97,6 +98,7 @@ void Engine::Texture::updateData( void* data ) {
                             GLsizei( m_textureParameters.width ),
                             GLsizei( m_textureParameters.height ), 0, m_textureParameters.format,
                             m_textureParameters.type, data );
+        GL_CHECK_ERROR
     }
     break;
     case GL_TEXTURE_3D:
@@ -105,6 +107,7 @@ void Engine::Texture::updateData( void* data ) {
             0, m_textureParameters.internalFormat, GLsizei( m_textureParameters.width ),
             GLsizei( m_textureParameters.height ), GLsizei( m_textureParameters.depth ), 0,
             m_textureParameters.format, m_textureParameters.type, data );
+        GL_CHECK_ERROR
     }
     break;
     case GL_TEXTURE_CUBE_MAP:
@@ -113,6 +116,7 @@ void Engine::Texture::updateData( void* data ) {
                                  GLsizei( m_textureParameters.width ),
                                  GLsizei( m_textureParameters.height ), 0,
                                  m_textureParameters.format, m_textureParameters.type, data );
+        GL_CHECK_ERROR
     }
     break;
     default:
