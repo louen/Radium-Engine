@@ -18,6 +18,7 @@
 #include <Engine/Renderer/Material/BlinnPhongMaterial.hpp>
 #include <Engine/Renderer/Material/Material.hpp>
 #include <Engine/Renderer/Material/MaterialConverters.hpp>
+#include <Engine/Renderer/Material/RayMarchingMaterial.hpp>
 
 #include <Engine/Renderer/RenderObject/Primitives/DrawPrimitives.hpp>
 #include <Engine/Renderer/RenderObject/RenderObject.hpp>
@@ -282,11 +283,10 @@ void VolumeComponent::generateVolumeRender( const Ra::Core::Asset::VolumeData* d
     RenderTechnique rt;
 
     bool isTransparent{true};
-    auto mat = Ra::Core::make_shared<BlinnPhongMaterial>( data->getName() + "_DefaultBPMaterial" );
-    mat->m_kd = Ra::Core::Utils::Color::Grey();
-    mat->m_ks = Ra::Core::Utils::Color::White();
+    auto mat = Ra::Core::make_shared<RayMarchingMaterial>( data->getName() + "_DefaultBPMaterial" );
+    mat->setTexture( const_cast<Texture*>( &( _displayVolume->getDataTexture() ) ) );
     rt.setMaterial( mat );
-    auto builder = EngineRenderTechniques::getDefaultTechnique( "BlinnPhong" );
+    auto builder = EngineRenderTechniques::getDefaultTechnique( "RayMarching" );
     builder.second( rt, isTransparent );
 
     auto ro = RenderObject::createRenderObject( roName, this, RenderObjectType::Geometry,
