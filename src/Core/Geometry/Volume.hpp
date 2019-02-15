@@ -37,7 +37,7 @@ class RA_CORE_API AbstractVolume : public AbstractGeometry {
     };
 
     /// Type of value encoded in the volume
-    using ValueType = Scalar;
+    using ValueType = float;
 
   protected:
     AbstractVolume( const VolumeStorageType& type );
@@ -108,13 +108,13 @@ class RA_CORE_API AbstractDiscreteVolume : public AbstractVolume {
 
     Aabb computeAabb() const override;
 
-    const Vector3i size() const { return _size; }
+    const Vector3i& size() const { return _size; }
     /// \warning Clears existing data
     void setSize( Eigen::Ref<const Vector3i> size ) {
         _size = size;
         updateStorage();
     }
-    const Vector3 binSize() const { return _binSize; }
+    const Vector3& binSize() const { return _binSize; }
     void setBinSize( Eigen::Ref<const Vector3> binSize ) { _binSize = binSize; }
 
     inline Utils::optional<ValueType> getBinValue( Eigen::Ref<const IndexType> p ) const {
