@@ -2,6 +2,8 @@
 
 #include <Engine/RaEngine.hpp>
 #include <Engine/Renderer/Displayable/DisplayableObject.hpp>
+#include <Engine/Renderer/Mesh/Mesh.hpp>
+#include <Engine/Renderer/Texture/Texture.hpp>
 
 namespace Ra {
 namespace Core {
@@ -56,6 +58,9 @@ class RA_ENGINE_API VolumeObject : public Displayable {
 
   private:
     std::unique_ptr<Core::Geometry::AbstractVolume> m_volume;
+    Texture m_tex;
+    /// Mesh used to display the bounding box of the grid for the ray marching
+    Mesh m_mesh;
 
     /// General dirty bit of the mesh. An empty volume is not dirty
     bool m_isDirty{false};
